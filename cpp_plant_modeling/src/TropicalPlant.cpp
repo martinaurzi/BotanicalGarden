@@ -2,7 +2,7 @@
 
 namespace BotanicalGarden
 {
-    TropicalPlant::TropicalPlant(const std::string& n, const IdealEnvironment& ideal, float direct_light_t):
+    TropicalPlant::TropicalPlant(const std::string& n, const IdealEnvironment& ideal, const float direct_light_t):
         Plant(n, ideal, 1.5f), direct_light_tolerance(direct_light_t){}
 
     void TropicalPlant::update_growth(float t, float h, float l)

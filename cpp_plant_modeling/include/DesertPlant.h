@@ -18,6 +18,8 @@ namespace BotanicalGarden
              * In questo modo, se dimentico di mettere virtual ottengo un warning
             */
             void update_growth(float t, float h, float l) override;
+
+            std::string toString() const override;
     };
 }
 

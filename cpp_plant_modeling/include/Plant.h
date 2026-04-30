@@ -26,6 +26,14 @@ namespace BotanicalGarden
 
             // Funzione per ottenere lo stage attuale della pianta: Germoglio, Piantina, Adulta
             GrowthStage get_growth_stage() const;
+
+            std::string get_growth_stage_str() const;
+
+            std::string getPlantName() const;
+
+            PlantStatus getPlantStatus() const;
+
+            virtual std::string toString() const;
     };
 }
 
