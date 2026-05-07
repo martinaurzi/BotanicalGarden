@@ -7,13 +7,12 @@ namespace BotanicalGarden
 {
     class TropicalPlant final : public Plant
     {
-        private:
-            float direct_light_tolerance;
+        float direct_light_tolerance;
 
         public:
             TropicalPlant(const std::string& n, const IdealEnvironment& ideal, float direct_light_t = 0.8f);
 
-            void update_growth(float t, float h, float l) override;
+            void apply_growth(float temp, float hum, float light) override;
     };
 }
 

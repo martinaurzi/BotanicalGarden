@@ -7,13 +7,12 @@ namespace BotanicalGarden
 {
     class TemperatePlant final : public Plant
     {
-        private:
-            float healing_rate;
+        float healing_rate;
 
         public:
             TemperatePlant(const std::string& n, const IdealEnvironment& ideal, float healing_r = 1.0f);
 
-            void update_growth(float t, float h, float l) override;
+            void apply_growth(float temp, float hum, float light) override;
     };
 }
 

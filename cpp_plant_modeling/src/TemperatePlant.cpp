@@ -3,9 +3,9 @@
 namespace BotanicalGarden
 {
     TemperatePlant::TemperatePlant(const std::string& n, const IdealEnvironment& ideal, const float healing_r):
-        Plant(n, ideal), healing_rate(healing_r){}
+        Plant(n, ideal, 70, 40), healing_rate(healing_r){}
 
-    void TemperatePlant::update_growth(float t, float h, float l)
+    void TemperatePlant::apply_growth(float temp, float hum, float light)
     {
         // Da implementare
     }

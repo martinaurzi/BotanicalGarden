@@ -5,8 +5,8 @@ namespace BotanicalGarden
 {
     struct PlantStatus
     {
-        int growth; // 0-10
-        int health; // 0-100
+        float growth; // 0-10
+        float health; // 0-100
     };
 
     struct Range
@@ -26,7 +26,8 @@ namespace BotanicalGarden
     {
         Bud, // Germoglio
         Seedling, // Piantina
-        Adult
+        Adult,
+        Dead
     };
 }
 #endif //BOTANICALGARDEN_STRUCTS_H
