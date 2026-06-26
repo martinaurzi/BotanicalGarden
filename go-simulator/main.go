@@ -1,74 +1,69 @@
 package main
 
 import (
-    "fmt"
-    "time"
+	"fmt"
+	"log"
+	"time"
 
-    "go-simulator/pkg/environment"
-    "go-simulator/pkg/models"
-    "go-simulator/pkg/plant"
-    "go-simulator/pkg/simulation"
-    "go-simulator/pkg/storage"
+	"go-simulator/pkg/environment"
+	"go-simulator/pkg/models"
+	"go-simulator/pkg/simulation"
+	"go-simulator/pkg/storage"
 )
 
 func main() {
 
-    // Configurazione ambiente
-    cfg := environment.EnvironmentConfig{
-        DayTemp:             25,
-        NightTemp:           18,
-        DayLight:            80,
-        NightLight:          10,
-        BaseHumidity:        50,
-        ClimateVariationFreq: 2 * time.Second,
-        DayDuration:         5 * time.Second,
-        NightDuration:       5 * time.Second,
-    }
+	// inizializzazione database
+	db, err := storage.InitDB("plants.db")
+	if err != nil {
+		log.Fatalf("Errore fatale inizializzazione DB: %v", err)
+	}
+	fmt.Println("Database inizializzato.")
 
-    // Creazione ambiente
-    env := environment.NewEnvironment(cfg)
+	// Configurazione ambiente
+	cfg := environment.EnvironmentConfig{
+		DayTemp:              28.0,
+		NightTemp:            18.0,
+		DayLight:             80.0,
+		NightLight:           10.0,
+		BaseHumidity:         60.0,
+		ClimateVariationFreq: 2 * time.Second,
+		DayDuration:          7 * time.Second,
+	}
 
-    // Canale per inviare lo stato dell’ambiente alle piante
-    envChan := make(chan models.EnvironmentState)
+	// Creazione ambiente
+	env := environment.NewEnvironment(cfg)
 
-    // Avvio delle goroutine dell’ambiente
-    env.Start(cfg, envChan)
+	// Canale per inviare lo stato dell’ambiente alle piante
+	envChan := make(chan models.EnvironmentState)
 
-    // Creazione Piante
-    plants := []*plant.Plant{
-        {State: models.PlantState{ID: 1, Species: "rosa", Health: 80, Growth: 0, Stage: "germoglio"}},
-        {State: models.PlantState{ID: 2, Species: "girasole", Health: 90, Growth: 1, Stage: "germoglio"}},
-    }
+	//Recuperiamo la lista di piante da C++
+	plants := simulation.InitPlants()
+	fmt.Printf("Ricevute %d piante iniziali dal motore di simulazione.\n", len(plants))
 
-    // Canale per inviare snapshot al database
-    snapshotChan := make(chan models.PlantState)
+	initialEnv := env.GetState()
+	err = storage.saveSnapshot(db, plants, initialEnv)
+	if err != nil {
+		log.Printf("Errore salvataggio snapshot iniziale: %v", err) //vedere se conviene fmt o log
+	} else {
+		fmt.Println("Primo snapshot iniziale salvato nel DB con successo.")
+	}
 
-    // Avvio delle goroutine piante
-    for _, p := range plants {
-        simulation.StartPlantRoutine(p, envChan, snapshotChan)
-    }
+	// Avvio delle goroutine dell’ambiente
+	env.Start(cfg, envChan)
 
-    // inizializzazione database
-    db, err := storage.InitDB("plants.db")
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Database inizializzato.")
+	fmt.Println("Simulazione avviata. Premi CTRL+C per fermare.")
 
-    // goroutine writer del database
-    go func() {
-        for snap := range snapshotChan {
-            envState := env.GetState() // prendo lo stato attuale dell’ambiente
-            err := storage.InsertSnapshot(db, snap, envState)
-            if err != nil {
-                fmt.Println("Errore DB:", err)
-            } else {
-                fmt.Printf("Snapshot salvato: pianta %d, salute %d, crescita %d\n",
-                    snap.ID, snap.Health, snap.Growth)
-            }
-        }
-    }()
+	// Ogni volta che cambia l'ambiente inviamo lo stato dell'ambiente a C++ che mi restituisce le piante aggiornate
+	for envState := range envChan {
+		fmt.Printf("[%s] Cambiamento Ambiente -> Temp: %.2f°C, Luce: %.2f\n, Hum: %.2f\n",
+			envState.Timestamp.Format("15:04:05"), envState.Temperature, envState.Light, envState.Humidity)
 
-    fmt.Println("Simulazione avviata. Premi CTRL+C per fermare.")
-    select {} // blocca il main per sempre
+		plants = simulation.UpdatePlants(envState)
+
+		err := storage.SaveSnapshot(db, plants, envState)
+		if err != nil {
+			log.Printf("Errore salvataggio snapshot a DB: %v", err)
+		}
+	}
 }

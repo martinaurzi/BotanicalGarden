@@ -1,107 +1,116 @@
 package environment
 
 import (
-    "math/rand"
-    "sync"
-    "time"
-    "go-simulator/pkg/models"
+	"go-simulator/pkg/models"
+	"math/rand"
+	"sync"
+	"time"
 )
 
 // Configurazione ambiente
 type EnvironmentConfig struct {
-    DayTemp float64 // temperatura alta
-    NightTemp float64 // temperatura bassa
-    DayLight float64 // luce alta
-    NightLight float64 // minor luce
-    BaseHumidity float64 // umidità
-    ClimateVariationFreq time.Duration
-    DayDuration time.Duration
-    NightDuration time.Duration
+	DayTemp              float64 // temperatura alta
+	NightTemp            float64 // temperatura bassa
+	DayLight             float64 // luce alta
+	NightLight           float64 // minor luce
+	BaseHumidity         float64 // umidità
+	ClimateVariationFreq time.Duration
+	DayDuration          time.Duration
 }
 
 type Environment struct {
-    state models.EnvironmentState
-    mutex sync.RWMutex
+	mutex sync.Mutex
+	state models.EnvironmentState
+}
+
+func (e *Environment) GetState() models.EnvironmentState {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	return e.state
 }
 
 // Avvio della simulazione dell'ambiente
-func (e *Environment) Start(cfg EnvironmentConfig, envChan chan<- models.EnvironmentState){
-    go e.dayNightCycle(cfg, envChan)
-    go e.climateVariations(cfg, envChan)
+func (e *Environment) Start(cfg EnvironmentConfig, envChan chan<- models.EnvironmentState) {
+	go e.dayNightCycle(cfg, envChan)
+	go e.climateVariations(cfg, envChan)
 }
 
 func NewEnvironment(cfg EnvironmentConfig) *Environment {
-    return &Environment{
-        state: models.EnvironmentState{
-            Temperature: cfg.DayTemp,
-            Humidity: cfg.BaseHumidity,
-            Light: cfg.DayLight,
-            Timestamp: time.Now(),
-        },
-    }
+	return &Environment{
+		state: models.EnvironmentState{
+			Temperature: cfg.DayTemp,
+			Humidity:    cfg.BaseHumidity,
+			Light:       cfg.DayLight,
+			Timestamp:   time.Now(),
+		},
+	}
 }
 
-// Blocca la lettura dello stato per fornire una copia
-func (e *Environment) GetState() models.EnvironmentState {
-    e.mutex.RLock()
-    defer e.mutex.RUnlock()
-    return e.state
+// updateClimate applica variazioni relative (Risolve il problema Read-Modify-Write)
+func (e *Environment) updateClimate(deltaTemp, deltaHum float64, envChan chan<- models.EnvironmentState) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	// Modifichiamo lo stato internamente in modo atomico
+	e.state.Temperature += deltaTemp
+	e.state.Humidity += deltaHum
+
+	// Bound check per l'umidità
+	if e.state.Humidity < 0 {
+		e.state.Humidity = 0
+	} else if e.state.Humidity > 100 {
+		e.state.Humidity = 100
+	}
+
+	e.state.Timestamp = time.Now()
+
+	// Inviamo lo stato modificato sul canale
+	envChan <- e.state
 }
 
-// Aggiorna lo stato interno dell'ambiente
-func (e *Environment) updateState(temperature, humidity, light float64){
-    e.mutex.Lock()
-    defer e.mutex.Unlock()
+// updateDayNight imposta i valori assoluti di luce e temperatura di base
+func (e *Environment) updateDayNight(temp, light float64, envChan chan<- models.EnvironmentState) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
 
-    e.state.Temperature = temperature
-    e.state.Humidity = humidity
-    e.state.Light = light
-    e.state.Timestamp = time.Now()
+	e.state.Temperature = temp
+	e.state.Light = light
+	e.state.Timestamp = time.Now()
+
+	envChan <- e.state
 }
 
-// Ciclo giorno/notte
-func (e *Environment) dayNightCycle(cfg EnvironmentConfig, envChan chan<- models.EnvironmentState){
-    isDay := true
+// Ciclo giorno/notte OTTIMIZZATO per durate uguali
+func (e *Environment) dayNightCycle(cfg EnvironmentConfig, envChan chan<- models.EnvironmentState) {
+	// Usiamo la durata del giorno come intervallo fisso del metronomo
+	ticker := time.NewTicker(cfg.DayDuration)
+	defer ticker.Stop()
 
-    for {
-        if isDay{
-            e.updateState(cfg.DayTemp, e.GetState().Humidity, cfg.DayLight)
-            envChan <- e.GetState()
-            time.Sleep(cfg.DayDuration)
-        } else {
-            e.updateState(cfg.NightTemp, e.GetState().Humidity, cfg.NightLight)
-            envChan <- e.GetState()
-            time.Sleep(cfg.NightDuration)
-        }
-        isDay = !isDay
-    }
+	isDay := true
+
+	for range ticker.C {
+		if isDay {
+			e.updateDayNight(cfg.DayTemp, cfg.DayLight, envChan)
+		} else {
+			e.updateDayNight(cfg.NightTemp, cfg.NightLight, envChan)
+		}
+
+		// Inverte lo stato per il prossimo "battito" del ticker
+		isDay = !isDay
+	}
 }
 
-// Variazioni periodiche della temperatura e umidità
-func (e Environment) climateVariations(cfg EnvironmentConfig, envChan chan<- models.EnvironmentState){
-    rand.Seed(time.Now().UnixNano()) //prendo il tempo attuale in nanosecondi e lo passo come seed, per avere sempre un seed differente
+// Variazioni periodiche (Qui il Ticker è perfetto)
+func (e *Environment) climateVariations(cfg EnvironmentConfig, envChan chan<- models.EnvironmentState) {
+	ticker := time.NewTicker(cfg.ClimateVariationFreq)
+	defer ticker.Stop() // Pulizia della risorsa quando la funzione esce
 
-    for {
-        time.Sleep(cfg.ClimateVariationFreq)
+	for range ticker.C {
+		// Generazione delta [-2, +2) e [-5, +5)
+		deltaTemp := rand.Float64()*4 - 2
+		deltaHum := rand.Float64()*10 - 5
 
-        current := e.GetState()
-
-        // variazioni casuali controllate rand.Float64() genera un numero casuale tra [0.0 e 1.0)
-        // *4 aumenta l'intervallo a [0, 4) con -2 [-2, +2)
-        deltaTemp := (rand.Float64()*4 - 2) //[-2, +2]
-        deltaHum := (rand.Float64()*10 - 5) //[-5, +5]
-
-        newTemp := current.Temperature + deltaTemp
-        newHum := current.Humidity + deltaHum
-
-        if newHum < 0 { // non esiste umidità negativa
-            newHum = 0
-        }
-        if newHum > 100 {
-            newHum = 100
-        }
-
-        e.updateState(newTemp, newHum, current.Light)
-        envChan <- e.GetState()
-    }
+		// Applichiamo la variazione atomica
+		e.updateClimate(deltaTemp, deltaHum, envChan)
+	}
 }
