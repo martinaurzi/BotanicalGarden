@@ -10,16 +10,18 @@ namespace BotanicalGarden
     {
         protected:
             const std::string name;
-            const IdealEnvironment ideal_parameters;
             const float growth_threshold;
             const float death_threshold;
             PlantStatus status;
-            float growth_rate;
+            const IdealEnvironment ideal_parameters;
+            const GrowthFactors temp_factors;
+            const GrowthFactors hum_factors;
+            const GrowthFactors light_factors;
 
         public:
             // Costruttore
             Plant(const std::string& n, const IdealEnvironment& ideal, float growth_th, float death_th,
-                float growth_r = 1.0f);
+                const GrowthFactors& temp_f, const GrowthFactors& hum_f, const GrowthFactors& light_f);
 
             // Distruttore
             virtual ~Plant() = default;
@@ -35,16 +37,16 @@ namespace BotanicalGarden
 
             PlantStatus getPlantStatus() const;
 
-            virtual std::string toString() const;
+            virtual std::string printPlant() const;
 
         protected:
             // Funzioni membro virtuali pure (= 0) che devono essere accessibili solo alle classi derivate
             virtual void apply_growth(float temp, float hum, float light) = 0;
             virtual void update_health(float temp, float hum, float light) = 0;
-            virtual float get_temp_factor(float temp) = 0;
-            virtual float get_hum_factor(float hum) = 0;
-            virtual float get_light_factor(float light) = 0;
+
+            // Funzione statica condivisa tra tutte le istanze
+            static float calculate_environment_factor(float current_value, float min_value, float max_value, const GrowthFactors& factors);
     };
 }
 
-#endif //BOTANICALGARDEN_PLANT_H
+#endif

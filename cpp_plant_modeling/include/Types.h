@@ -29,5 +29,12 @@ namespace BotanicalGarden
         Adult,
         Dead
     };
+
+    struct GrowthFactors
+    {
+        float ideal;
+        float above_max;
+        float below_min;
+    };
 }
 #endif //BOTANICALGARDEN_STRUCTS_H

@@ -8,11 +8,23 @@ namespace BotanicalGarden
     class TropicalPlant final : public Plant
     {
         float direct_light_tolerance;
+        float thermal_shock_vulnerability;
+        float prev_temperature{std::numeric_limits<float>::infinity()};
+        int ideal_env_streak{0};
+        static constexpr float thermal_shock_threshold = 10.0f;
+        static constexpr float max_direct_light_tolerance = 1.0f;
 
         public:
-            TropicalPlant(const std::string& n, const IdealEnvironment& ideal, float direct_light_t = 0.8f);
+            TropicalPlant(const std::string& n, const IdealEnvironment& ideal, float direct_light_t = 0.6f, float thermal_shock_v = 0.3f);
 
             void apply_growth(float temp, float hum, float light) override;
+
+            void update_health(float temp, float hum, float light) override;
+
+            std::string printPlant() const override;
+
+        private:
+
     };
 }
 
