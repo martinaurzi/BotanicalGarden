@@ -3,72 +3,89 @@ package main
 import (
     "fmt"
     "time"
+    "log"
 
-    "go-simulator/pkg/environment"
-    "go-simulator/pkg/models"
-    "go-simulator/pkg/plant"
-    "go-simulator/pkg/simulation"
-    "go-simulator/pkg/storage"
+    "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/environment"
+    "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/models"
+    "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/simulation"
+    "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/storage"
 )
+
+const simulationDuration = 36 * time.Second
 
 func main() {
 
-    // Configurazione ambiente
-    cfg := environment.EnvironmentConfig{
-        DayTemp:             25,
-        NightTemp:           18,
-        DayLight:            80,
-        NightLight:          10,
-        BaseHumidity:        50,
-        ClimateVariationFreq: 2 * time.Second,
-        DayDuration:         5 * time.Second,
-        NightDuration:       5 * time.Second,
-    }
-
-    // Creazione ambiente
-    env := environment.NewEnvironment(cfg)
-
-    // Canale per inviare lo stato dell’ambiente alle piante
-    envChan := make(chan models.EnvironmentState)
-
-    // Avvio delle goroutine dell’ambiente
-    env.Start(cfg, envChan)
-
-    // Creazione Piante
-    plants := []*plant.Plant{
-        {State: models.PlantState{ID: 1, Species: "rosa", Health: 80, Growth: 0, Stage: "germoglio"}},
-        {State: models.PlantState{ID: 2, Species: "girasole", Health: 90, Growth: 1, Stage: "germoglio"}},
-    }
-
-    // Canale per inviare snapshot al database
-    snapshotChan := make(chan models.PlantState)
-
-    // Avvio delle goroutine piante
-    for _, p := range plants {
-        simulation.StartPlantRoutine(p, envChan, snapshotChan)
-    }
-
     // inizializzazione database
-    db, err := storage.InitDB("plants.db")
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println("Database inizializzato.")
+    	db, err := storage.InitDB("plants.db")
+    	if err != nil {
+    		log.Fatalf("Errore fatale inizializzazione DB: %v", err)
+    	}
 
-    // goroutine writer del database
-    go func() {
-        for snap := range snapshotChan {
-            envState := env.GetState() // prendo lo stato attuale dell’ambiente
-            err := storage.InsertSnapshot(db, snap, envState)
-            if err != nil {
-                fmt.Println("Errore DB:", err)
-            } else {
-                fmt.Printf("Snapshot salvato: pianta %d, salute %d, crescita %d\n",
-                    snap.ID, snap.Health, snap.Growth)
+        defer db.Close()
+
+        err = storage.ClearSnapshots(db)
+        if err != nil {
+            log.Fatalf("Errore durante la pulizia del database: %v", err)
+        }
+
+        fmt.Println("Database inizializzato e tabella snapshot svuotata.")
+
+    	// Configurazione simulazione
+    	cfg := environment.SimulationConfig{
+    		DayLight:             100.0,
+    		NightLight:           10.0,
+    		BaseHumidity:         50.0,
+    		ClimateVariationFreq: 2 * time.Second,
+    		DayDuration:          6 * time.Second,
+    		SeasonDuration:       18 * time.Second,
+    	}
+
+    	// Creazione ambiente
+    	env := environment.NewEnvironment(cfg)
+
+    	// Canale per inviare lo stato dell’ambiente alle piante, con buffer di 100 messaggi
+    	envChan := make(chan models.EnvironmentState, 100)
+
+    	//Recuperiamo la lista di piante da C++
+    	plants := simulation.InitPlants()
+    	fmt.Printf("Ricevute %d piante iniziali dal motore di simulazione.\n", len(plants))
+
+    	initialEnv := env.GetState()
+    	err = storage.SaveSnapshot(db, plants, initialEnv)
+    	if err != nil {
+    		log.Printf("Errore salvataggio snapshot iniziale: %v", err) //vedere se conviene fmt o log
+    	} else {
+    		fmt.Println("Primo snapshot iniziale salvato nel DB con successo.")
+    	}
+
+    	// Avvio delle goroutine dell’ambiente
+    	env.Start(envChan)
+
+    	fmt.Println("Simulazione avviata. Terminerà automaticamente tra 36 secondi")
+
+    	done := time.After(simulationDuration)
+
+
+        for {
+            select {
+            case envState := <-envChan:
+                fmt.Printf("[%s] Cambiamento Ambiente -> Temp: %.2f°C, Luce: %.2f, Hum: %.2f\n",
+                    envState.Timestamp.Format("15:04:05"), envState.Temperature, envState.Light, envState.Humidity)
+
+                plants = simulation.UpdatePlants(envState)
+
+                err := storage.SaveSnapshot(db, plants, envState)
+                if err != nil {
+                    log.Printf("Errore salvataggio snapshot a DB: %v", err)
+                }
+
+            case <-done:
+                // Scaduti i 36 secondi, usciamo dal ciclo infinito
+                fmt.Println("\nTempo limite di 36 secondi raggiunto. Arresto della simulazione in corso")
+                env.Stop()
+                env.Wait()
+                fmt.Println("Tutte le goroutine terminate.")
+                return // serve la label perchè break da solo esce solo da select, mentre break Loop esce dal for esterno
             }
         }
-    }()
-
-    fmt.Println("Simulazione avviata. Premi CTRL+C per fermare.")
-    select {} // blocca il main per sempre
 }
