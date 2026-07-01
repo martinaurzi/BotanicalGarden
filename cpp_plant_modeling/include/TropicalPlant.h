@@ -1,7 +1,12 @@
 #ifndef BOTANICALGARDEN_TROPICALPLANT_H
 #define BOTANICALGARDEN_TROPICALPLANT_H
 
+#include <vector>
+#include <memory>
+#include <limits>
+
 #include "Plant.h"
+#include "GardenManager.h"
 
 namespace BotanicalGarden
 {
@@ -21,11 +26,16 @@ namespace BotanicalGarden
 
             void update_health(float temp, float hum, float light) override;
 
+            std::string get_plant_type() const override;
+
             std::string printPlant() const override;
 
         private:
+            // inline
+            void set_direct_light_tolerance(const float new_value) {direct_light_tolerance = new_value;}
+            void set_thermal_shock_vulnerability(const float new_value) {thermal_shock_vulnerability = new_value;}
 
+            friend void GardenManager::load_garden_from_file(const std::string& filename);
     };
 }
-
 #endif //BOTANICALGARDEN_TROPICALPLANT_H

@@ -12,19 +12,21 @@ namespace BotanicalGarden
         ideal_parameters(ideal), temp_factors(temp_f), hum_factors(hum_f), light_factors(light_f)
     {}
 
-    /* Nella funzione update_growth viene implementata la logica di crescita comune a tutte le piante.
-     * In particolare, prima di aggiornare la crescita si verifica la salute della pianta.
-     *
-     * Se la salute della pianta si mantiene sopra una determinata soglia, la pianta cresce.
-     * Quando la salute si trova in uno stato intermedio, la pianta interrompe la crescita.
-     * Se lo stato di salute si trova sotto la soglia critica, la pianta muore.*/
+    bool Plant::is_dead() const
+    {
+        return status.health <= death_threshold;
+    }
+
+    /* Nella funzione update_growth viene implementata la logica di crescita comune a tutte le piante. In particolare, prima di aggiornare la crescita si verifica la salute della pianta.
+     * Se la salute della pianta si mantiene sopra una determinata soglia, la pianta cresce. Quando la salute si trova in uno stato intermedio, la pianta interrompe la crescita.
+     * Se lo stato di salute si trova sotto la soglia critica, la pianta muore.
+    */
     void Plant::update_plant_status(float temp, float hum, float light)
     {
         // Pianta morta
-        if (status.health <= death_threshold)
+        if (is_dead())
         {
-            std::cout << std::format("La pianta {} è morta (salute: {:.2f}% <= {:.2f}%)", name, status.health, death_threshold) << std::endl;
-            //std::cout << "La pianta " << name << " e' morta (salute: " << status.health << ")" << std::endl;
+            std::cout << std::format("La pianta {} e' morta (salute: {:.2f}% <= {:.2f}%)", name, status.health, death_threshold) << std::endl;
             return;
         }
 
@@ -35,12 +37,23 @@ namespace BotanicalGarden
         if (status.health >= growth_threshold)
         {
             std::cout << std::format("La pianta {} cresce ({:.2f}% >= {:.2f}%)", name, status.health, growth_threshold) << std::endl;
-            //std::cout << "La pianta " << name << " cresce (" << status.health << " >= " << growth_threshold << ")" << std::endl;
             apply_growth(temp, hum, light);
+        }
+        else
+        {
+            std::cout << std::format("La pianta {} ha interrotto la crescita ({:.2f}% < {:.2f}%)", name, status.health, growth_threshold) << std::endl;
         }
     }
 
-    // Funzione per calcolare i fattori ambientali che influenzano la crescita della pianta
+    // Vverifica se le condizioni ambientali sono ideali per la pianta
+    bool Plant::is_environment_ideal(const float temp, const float hum, const float light) const
+    {
+        return (temp >= ideal_parameters.temperature.min && temp <= ideal_parameters.temperature.max &&
+                hum >= ideal_parameters.humidity.min && hum <= ideal_parameters.humidity.max &&
+                light >= ideal_parameters.light.min && light <= ideal_parameters.light.max);
+    }
+
+    // Calcola i fattori ambientali che influenzano la crescita della pianta
     float Plant::calculate_environment_factor(const float current_value, const float min_value, const float max_value, const GrowthFactors& factors)
     {
         return current_value >= min_value && current_value <= max_value ? factors.ideal :
@@ -56,7 +69,6 @@ namespace BotanicalGarden
 
     std::string Plant::get_growth_stage_str() const
     {
-        //manca dead: return (get_growth_stage() == GrowthStage::Bud) ? "Bud" : (get_growth_stage() == GrowthStage::Seedling) ? "Seedling" : "Adult";
         switch (get_growth_stage())
         {
             case GrowthStage::Bud:
@@ -76,15 +88,24 @@ namespace BotanicalGarden
         }
     }
 
-    std::string Plant::getPlantName() const
+    std::string Plant::get_plant_name() const
     {
         return name;
     }
 
-    // Forse meglio fare due get separati per health e per growth?
-    PlantStatus Plant::getPlantStatus() const
+    PlantStatus Plant::get_plant_status() const
     {
         return status;
+    }
+
+    float Plant::get_growth_threshold() const
+    {
+        return growth_threshold;
+    }
+
+    float Plant::get_death_threshold() const
+    {
+        return death_threshold;
     }
 
     std::string Plant::printPlant() const

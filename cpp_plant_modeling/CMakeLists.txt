@@ -9,6 +9,9 @@ add_executable(BotanicalGarden
         src/DesertPlant.cpp
         src/TropicalPlant.cpp
         src/TemperatePlant.cpp
+        src/GardenManager.cpp
+        src/GardenManager.h
+        src/GoBridge.cpp
 )
 
 target_include_directories(BotanicalGarden PUBLIC include)

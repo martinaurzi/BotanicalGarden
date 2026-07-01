@@ -1,8 +1,8 @@
-#include "DesertPlant.h"
-
 #include <cmath>
 #include <format>
 #include <iostream>
+
+#include "DesertPlant.h"
 
 namespace BotanicalGarden
 {
@@ -12,7 +12,7 @@ namespace BotanicalGarden
             water_reserve{0.0f}
     {}
 
-    void DesertPlant::use_water_reserve(float& water_reserve_protection)
+    void DesertPlant::use_water_reserve(float& water_reserve_damage)
     {
         constexpr float needed_water{1.0f};
         const float water_ratio = water_reserve / needed_water;
@@ -21,7 +21,7 @@ namespace BotanicalGarden
          * quindi verrà preso il massimo tra i due valori, cioè 0.0f. In questo caso la pianta non subisce danni perchè utilizza la riserva d'acqua.
          * Se invece water_reserve=0.2f, 1.0f - water_ratio = 0.8f e la pianta subisce un danno proporzionale a questo valore
          */
-        water_reserve_protection = std::max(0.0f, 1.0f - water_ratio);
+        water_reserve_damage = std::max(0.0f, 1.0f - water_ratio);
 
         /* Se water_reserve > needed_water allora decremento la water_reserve di una quantità pari a needed_water.
          * Se water_reserve < needed_water allora pongo water_reserve=0.0 per non aver un valore negativo */
@@ -33,12 +33,10 @@ namespace BotanicalGarden
     void DesertPlant::update_health(float temp, float hum, float light)
     {
         constexpr float damage_scaling{0.4f};
-        float water_reserve_protection{1.0f};
+        float water_reserve_damage{1.0f};
 
         // Condizioni ideali: la pianta recupera salute
-        if (temp >= ideal_parameters.temperature.min && temp <= ideal_parameters.temperature.max &&
-            hum >= ideal_parameters.humidity.min && hum <= ideal_parameters.humidity.max &&
-            light >= ideal_parameters.light.min && light <= ideal_parameters.light.max)
+        if (is_environment_ideal(temp, hum, light))
         {
             status.health = std::min(100.0f, status.health + 3.0f);
             water_reserve = std::min(max_water_reserve, water_reserve + 0.2f);
@@ -52,9 +50,9 @@ namespace BotanicalGarden
         {
             const float temp_delta = temp - ideal_parameters.temperature.max;
 
-            use_water_reserve(water_reserve_protection);
+            use_water_reserve(water_reserve_damage);
 
-            status.health -= std::log1p(temp_delta) * water_reserve_protection;
+            status.health -= std::log1p(temp_delta) * water_reserve_damage;
         }
         else if (temp < ideal_parameters.temperature.min)
         {
@@ -79,9 +77,9 @@ namespace BotanicalGarden
 
             // Umidità bassa: se la pianta possiede abbastanza riserva d'acqua, il danno viene azzerato, sennò il danno viene ridotto in modo
             // proporzionale alla riserva d'acqua disponibile.
-            use_water_reserve(water_reserve_protection);
+            use_water_reserve(water_reserve_damage);
 
-            status.health -= std::log1p(hum_delta_min) * water_reserve_protection * damage_scaling;
+            status.health -= std::log1p(hum_delta_min) * water_reserve_damage * damage_scaling;
         }
 
         // Luce bassa: danno leggero
@@ -126,8 +124,13 @@ namespace BotanicalGarden
             status.growth = std::min(10.0f, status.growth + sum_factors);
     }
 
+    std::string DesertPlant::get_plant_type() const
+    {
+        return "Desert";
+    }
+
     std::string DesertPlant::printPlant() const
     {
-        return Plant::printPlant() + std::format("Water reserve: {:.2f}\n", water_reserve);
+        return std::format("Type: {}\n", get_plant_type()) + Plant::printPlant() + std::format("Water reserve: {:.2f}\n", water_reserve);
     }
 };

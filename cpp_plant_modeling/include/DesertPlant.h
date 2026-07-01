@@ -21,10 +21,12 @@ namespace BotanicalGarden
 
             void update_health(float temp, float hum, float light) override;
 
+            std::string get_plant_type() const override;
+
             std::string printPlant() const override;
 
         private:
-            void use_water_reserve(float& water_reserve_protection);
+            void use_water_reserve(float& water_reserve_damage);
     };
 }
 

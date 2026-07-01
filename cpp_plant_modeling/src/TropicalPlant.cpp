@@ -1,9 +1,8 @@
 #include <cmath>
-
-#include "TropicalPlant.h"
-
 #include <format>
 #include <iostream>
+
+#include "TropicalPlant.h"
 
 namespace BotanicalGarden
 {
@@ -25,7 +24,7 @@ namespace BotanicalGarden
             {
                 const float delta_shock = delta_temp_prev - thermal_shock_threshold;
                 std::cout << "Salute prima shock termico: " << status.health << std::endl;
-                status.health -= std::pow(delta_shock, 2.0f) * thermal_shock_vulnerability * damage_scaling;
+                status.health -= std::pow(delta_shock, 2.0f) * thermal_shock_vulnerability;
                 std::cout << "Salute dopo shock termico: " << status.health << std::endl;
             }
         }
@@ -34,7 +33,7 @@ namespace BotanicalGarden
         if (light > ideal_parameters.light.max)
         {
             // Luce troppo alta: la tolleranza alla luce diretta diminuisce
-            direct_light_tolerance = std::max(0.0f, direct_light_tolerance - (light - ideal_parameters.light.max) * 0.1f);
+            direct_light_tolerance = std::max(0.0f, direct_light_tolerance - (light - ideal_parameters.light.max) * 0.01f);
         }
         else
         {
@@ -49,12 +48,8 @@ namespace BotanicalGarden
             }
         }
 
-        /* Condizioni ideali: la salute della pianta aumenta
-         * - Se le condizioni sono ideale per più turni consecutivi, la salute della pianta cresce ulteriormente
-         */
-        if (temp >= ideal_parameters.temperature.min && temp <= ideal_parameters.temperature.max &&
-            hum >= ideal_parameters.humidity.min && hum <= ideal_parameters.humidity.max &&
-            light >= ideal_parameters.light.min && light <= ideal_parameters.light.max)
+        // Condizioni ideali: la salute della pianta aumenta. Se le condizioni sono ideali per più turni consecutivi, la salute della pianta cresce ulteriormente
+        if (is_environment_ideal(temp, hum, light))
         {
             std::cout << "CONDIZIONI IDEALI" << std::endl;
 
@@ -141,15 +136,21 @@ namespace BotanicalGarden
         status.growth = std::min(10.0f, status.growth + std::exp(temp_factor + hum_factor + light_factor));
     }
 
+    std::string TropicalPlant::get_plant_type() const
+    {
+        return "Tropical";
+    }
+
     std::string TropicalPlant::printPlant() const
     {
-        return Plant::printPlant() + std::format(
-         "Direct light Tolerance: {:.2f}\n"
-                "Thermal shock vulnerability: {:.2f}\n"
-                "Ideal environment streak: {:d}\n",
-                direct_light_tolerance,
-                thermal_shock_vulnerability,
-                ideal_env_streak
-         );
+        return  std::format("Type: {}\n", get_plant_type()) +
+                Plant::printPlant() +
+                std::format("Direct light Tolerance: {:.2f}\n"
+                                "Thermal shock vulnerability: {:.2f}\n"
+                                "Ideal environment streak: {:d}\n",
+                                direct_light_tolerance,
+                                thermal_shock_vulnerability,
+                                ideal_env_streak
+                );
     }
 }
