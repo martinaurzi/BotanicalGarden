@@ -1,4 +1,4 @@
-import "GardenManager.h";
+#include "GardenManager.h"
 
 extern "C" {
     bool init_garden()

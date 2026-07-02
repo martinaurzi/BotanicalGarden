@@ -3,15 +3,15 @@ project(BotanicalGarden)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(BotanicalGarden
-        src/main.cpp
+set(CPP_SOURCES
         src/Plant.cpp
         src/DesertPlant.cpp
         src/TropicalPlant.cpp
         src/TemperatePlant.cpp
         src/GardenManager.cpp
-        src/GardenManager.h
         src/GoBridge.cpp
 )
 
-target_include_directories(BotanicalGarden PUBLIC include)
+add_library(BotanicalGardenLib STATIC ${CPP_SOURCES}) # Creiamo una libreria statica a partire dai file sorgenti
+
+target_include_directories(BotanicalGardenLib PUBLIC include) # Indichiamo dove trovare i file .h
