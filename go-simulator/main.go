@@ -15,7 +15,6 @@ import (
 #cgo CFLAGS: -I../cpp_plant_modeling/include
 #cgo LDFLAGS: -L../cpp_plant_modeling/cmake-build-debug -lBotanicalGardenLib -lstdc++
 
-// Invece di #include "GoBridge.h", dichiariamo direttamente le funzioni qui:
 #include <stdbool.h>
 
 bool init_garden();
@@ -26,7 +25,7 @@ import "C"
 
 const simulationDuration = 36 * time.Second
 
-// helper per convertire la stringa JSON del C++ in fette di modelli.Plant di Go
+// helper per convertire la stringa JSON del C++
 func parsePlantsFromJSON(jsonStr string) ([]models.PlantState, error) {
 	var plants []models.PlantState
 	err := json.Unmarshal([]byte(jsonStr), &plants)
@@ -58,6 +57,8 @@ func main() {
         // Recupero piante iniziali
         cGardenStr := C.get_garden()
         goGardenStr := C.GoString(cGardenStr)
+
+        fmt.Printf("JSON ricevuto:\n%s\n", goGardenStr)
 
         plants, err := parsePlantsFromJSON(goGardenStr)
         if err != nil {
