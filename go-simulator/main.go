@@ -1,17 +1,37 @@
 package main
 
 import (
+    "encoding/json"
     "fmt"
     "time"
     "log"
 
     "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/environment"
     "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/models"
-    "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/simulation"
     "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/storage"
 )
 
+/*
+#cgo CFLAGS: -I../cpp_plant_modeling/include
+#cgo LDFLAGS: -L../cpp_plant_modeling/cmake-build-debug -lBotanicalGardenLib -lstdc++
+
+// Invece di #include "GoBridge.h", dichiariamo direttamente le funzioni qui:
+#include <stdbool.h>
+
+bool init_garden();
+const char* get_garden();
+const char* apply_environment_changes(const float temp, const float hum, const float light);
+*/
+import "C"
+
 const simulationDuration = 36 * time.Second
+
+// helper per convertire la stringa JSON del C++ in fette di modelli.Plant di Go
+func parsePlantsFromJSON(jsonStr string) ([]models.PlantState, error) {
+	var plants []models.PlantState
+	err := json.Unmarshal([]byte(jsonStr), &plants)
+	return plants, err
+}
 
 func main() {
 
@@ -27,8 +47,23 @@ func main() {
         if err != nil {
             log.Fatalf("Errore durante la pulizia del database: %v", err)
         }
-
         fmt.Println("Database inizializzato e tabella snapshot svuotata.")
+
+        // Inizializzazione giardino in C++, chiamiamo il bridge per caricare le piante da file
+        if !bool(C.init_garden()) {
+            log.Fatalf("Errore: Impossibile caricare il giardino dal file in C++")
+        }
+        fmt.Println("Giardino inizializzato con successo in C++.")
+
+        // Recupero piante iniziali
+        cGardenStr := C.get_garden()
+        goGardenStr := C.GoString(cGardenStr)
+
+        plants, err := parsePlantsFromJSON(goGardenStr)
+        if err != nil {
+            log.Fatalf("Errore nel parsing del JSON delle piante iniziali: %v", err)
+        }
+        fmt.Printf("Ricevute %d piante iniziali dal motore di simulazione C++.\n", len(plants))
 
     	// Configurazione simulazione
     	cfg := environment.SimulationConfig{
@@ -45,10 +80,6 @@ func main() {
 
     	// Canale per inviare lo stato dell’ambiente alle piante, con buffer di 100 messaggi
     	envChan := make(chan models.EnvironmentState, 100)
-
-    	//Recuperiamo la lista di piante da C++
-    	plants := simulation.InitPlants()
-    	fmt.Printf("Ricevute %d piante iniziali dal motore di simulazione.\n", len(plants))
 
     	initialEnv := env.GetState()
     	err = storage.SaveSnapshot(db, plants, initialEnv)
@@ -72,9 +103,21 @@ func main() {
                 fmt.Printf("[%s] Cambiamento Ambiente -> Temp: %.2f°C, Luce: %.2f, Hum: %.2f\n",
                     envState.Timestamp.Format("15:04:05"), envState.Temperature, envState.Light, envState.Humidity)
 
-                plants = simulation.UpdatePlants(envState)
+                cUpdatedGardenStr := C.apply_environment_changes(
+                    C.float(envState.Temperature),
+                    C.float(envState.Humidity),
+                    C.float(envState.Light),
+                )
 
-                err := storage.SaveSnapshot(db, plants, envState)
+                goUpdatedGardenStr := C.GoString(cUpdatedGardenStr)
+
+                plants, err = parsePlantsFromJSON(goUpdatedGardenStr)
+                if err != nil {
+                    log.Printf("Errore nel parsing del JSON aggiornato: %v", err)
+                    continue
+                }
+
+                err = storage.SaveSnapshot(db, plants, envState)
                 if err != nil {
                     log.Printf("Errore salvataggio snapshot a DB: %v", err)
                 }

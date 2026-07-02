@@ -20,9 +20,11 @@ func InitDB(path string) (*sql.DB, error) {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             plant_id INTEGER,
             species TEXT,
+            type TEXT,
             health INTEGER,
             growth INTEGER,
             stage TEXT,
+            is_dead BOOLEAN,
             timestamp TEXT,
             season TEXT,
             temperature REAL,
@@ -44,8 +46,8 @@ func SaveSnapshot(db *sql.DB, plants []models.PlantState, env models.Environment
     // Prepariamo la query una volta sola nel database
     stmt, err := tx.Prepare(`
         INSERT INTO plant_snapshots
-        (plant_id, species, health, growth, stage, timestamp, season, temperature, humidity, light)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        (plant_id, species, type, health, growth, stage, is_dead, timestamp, season, temperature, humidity, light)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     if err != nil {
         return err
     }
@@ -57,7 +59,7 @@ func SaveSnapshot(db *sql.DB, plants []models.PlantState, env models.Environment
     for _, p := range plants {
        // Usiamo stmt.Exec che è molto più veloce di tx.Exec dentro un ciclo
        _, err := stmt.Exec(
-          p.ID, p.Species, p.Health, p.Growth, p.Stage, formattedTime, env.Season,
+          p.ID, p.Name, p.Type, p.Health, p.Growth, p.GrowthStage, p.IsDead, formattedTime, env.Season,
           env.Temperature, env.Humidity, env.Light,
        )
        if err != nil {

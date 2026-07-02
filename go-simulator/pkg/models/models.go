@@ -13,9 +13,11 @@ type EnvironmentState struct {
 
 // Stato della pianta
 type PlantState struct {
-    ID int32 `json:"id"`
-    Species string `json:"species"`
-    Health int32 `json:"health"` // 0-100
-    Growth int32 `json:"growth"` // 0-10
-    Stage string `json:"stage"` // germoglio, piantina, piantaadulta, morta
+    ID          int     `json:"id"`
+    Type        string  `json:"type"`
+    Name        string  `json:"name"` //indica la specie
+    Health      float64 `json:"health"`
+    Growth      float64 `json:"growth"`
+    GrowthStage string  `json:"growth_stage"`
+    IsDead      bool    `json:"is_dead"`
 }
