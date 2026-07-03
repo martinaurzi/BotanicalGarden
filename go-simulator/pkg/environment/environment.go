@@ -91,7 +91,7 @@ func NewEnvironment(cfg SimulationConfig) *Environment {
         Temperature: env.currentProfile.NightTemp,
         Humidity:    cfg.BaseHumidity,
         Light:       cfg.NightLight,
-        Season:      env.currentSeason.String(),
+        Season:      int(env.currentSeason),
         Timestamp:   time.Now(),
     }
 
@@ -135,7 +135,7 @@ func (e *Environment) updateTimeAndBaseClimate(startTime time.Time, envChan chan
 	e.state.Temperature = e.currentProfile.NightTemp + (e.currentProfile.DayTemp-e.currentProfile.NightTemp)*coef
 	e.state.Light = e.simCfg.NightLight + (e.simCfg.DayLight-e.simCfg.NightLight)*coef
 
-	e.state.Season = e.currentSeason.String()
+	e.state.Season = int(e.currentSeason)
 
 	e.state.Timestamp = time.Now()
 
@@ -182,7 +182,7 @@ func (e *Environment) updateClimate(deltaTemp, deltaHum float64, envChan chan<- 
 		e.state.Humidity = 100
 	}
 
-    e.state.Season = e.currentSeason.String()
+    e.state.Season = int(e.currentSeason)
 	e.state.Timestamp = time.Now()
 
 	stateCopy := e.state

@@ -6,18 +6,19 @@
 namespace BotanicalGarden
 {
     TemperatePlant::TemperatePlant(const std::string& n, const IdealEnvironment& ideal, const float cold_dorm, const float low_light_t, const float leaf_renewal):
-        Plant(n, ideal, 70.0f, 40.0f, {0.6f, 0.0f, 0.4f}, {0.5f, 0.1f, 0.1f},
+        Plant(n, ideal, 50.0f, 25.0f, {0.6f, 0.0f, 0.4f}, {0.5f, 0.1f, 0.1f},
             {0.5f, 0.3f, 0.2f}), cold_dormancy(cold_dorm), low_light_tolerance(low_light_t), leaf_renewal(leaf_renewal){}
 
     void TemperatePlant::apply_damage_with_shield(const float base_damage)
     {
+        constexpr float damage_scaling{0.2f};
         const float damage_factor = (isDormant && shield_charge > 0.0f) ? (1.0f - shield_charge) : 1.0f;
 
         if (base_damage <= 0.0f)
             return;
 
         // Applichiamo il danno
-        status.health -= base_damage * damage_factor;
+        status.health -= base_damage * damage_factor * damage_scaling;
 
         if (isDormant)
         {
@@ -28,9 +29,42 @@ namespace BotanicalGarden
         }
     }
 
-    void TemperatePlant::update_health(const float temp, const float hum, const float light)
+    void TemperatePlant::apply_seasonal_effects(const Season season)
+    {
+        switch (season)
+        {
+            case Season::Spring:
+                // Il rinnovo delle foglie permette alla pianta di recuperare quasi la totalità della salute
+                // Esempio: status.health=80, missing_health=20, se leaf_renewal=0.8 --> status.health = 80 + 16 = 96
+                if (status.health < 100.0f)
+                {
+                    const float missing_health{100.0f - status.health};
+                    status.health = std::min(100.0f, status.health + missing_health * leaf_renewal);
+                }
+                break;
+
+            case Season::Winter:
+                // In inverno la pianta entra in riposo vegetativo e perde meno salute
+                if (!isDormant)
+                {
+                    isDormant = true;
+                    shield_charge = std::min(0.90f, cold_dormancy + 0.05f);
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    void TemperatePlant::update_health(const float temp, const float hum, const float light, const Season season)
     {
         constexpr float damage_intensity{1.5f};
+
+        if (season != Season::Winter)
+            isDormant = false;
+
+        apply_seasonal_effects(season);
 
         // Condizioni ideali: la pianta recupera salute
         if (is_environment_ideal(temp, hum, light))
@@ -40,9 +74,10 @@ namespace BotanicalGarden
             return;
         }
 
-        if (constexpr float night_temp_threshold{15.0f}; light <= ideal_parameters.light.min && temp <= night_temp_threshold) // potrei anche inserire || Stagione è inverno
+        // Notte
+        if (constexpr float night_temp_threshold{15.0f}; light <= ideal_parameters.light.min && temp <= night_temp_threshold)
         {
-            // Notte: la pianta entra in riposo vegetativo, perde meno salute fino a quando lo "scudo" non si consuma
+            // La pianta entra in riposo vegetativo, perde meno salute fino a quando lo "scudo" non si consuma
             if (!isDormant && cold_dormancy > 0.0f)
             {
                 isDormant = true;
@@ -62,7 +97,7 @@ namespace BotanicalGarden
         }
         else if (temp < ideal_parameters.temperature.min)
         {
-            const float base_damage_temp_min= (1.0f - cold_dormancy) * (ideal_parameters.temperature.min - temp);
+            const float base_damage_temp_min = (1.0f - cold_dormancy) * (ideal_parameters.temperature.min - temp);
 
             std::cout << "Danno temp < min" << std::endl;
             apply_damage_with_shield(base_damage_temp_min);

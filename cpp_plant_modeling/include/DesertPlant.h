@@ -19,7 +19,7 @@ namespace BotanicalGarden
             */
             void apply_growth(float temp, float hum, float light) override;
 
-            void update_health(float temp, float hum, float light) override;
+            void update_health(float temp, float hum, float light, Season season) override;
 
             std::string get_plant_type() const override;
 

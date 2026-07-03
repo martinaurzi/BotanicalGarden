@@ -13,15 +13,14 @@ namespace BotanicalGarden
     {
         float cold_dormancy;
         float low_light_tolerance;
-        float leaf_renewal; // PER ORA NON UTILIZZATO PERCHE SERVE LA PRIMAVERA
-        //float season_sensibility; // stagioni
+        float leaf_renewal;
         float shield_charge{0.0f};
         bool isDormant{false};
 
         public:
             TemperatePlant(const std::string& n, const IdealEnvironment& ideal, float cold_dorm, float low_light_t, float leaf_renewal = 0.0f);
 
-            void update_health(float temp, float hum, float light) override;
+            void update_health(float temp, float hum, float light, Season season) override;
 
             void apply_growth(float temp, float hum, float light) override;
 
@@ -31,6 +30,7 @@ namespace BotanicalGarden
 
         private:
             void apply_damage_with_shield(float base_damage);
+            void apply_seasonal_effects(Season season);
 
             void set_leaf_renewal(const float leaf_r) {leaf_renewal = leaf_r;}; // inline
 

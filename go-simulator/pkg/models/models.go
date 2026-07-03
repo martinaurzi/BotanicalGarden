@@ -7,7 +7,7 @@ type EnvironmentState struct {
     Temperature float64 `json:"temperature"` //tag delle struct per dire al programma come trasformare i dati in json
     Humidity float64 `json:"humidity"`
     Light float64 `json:"light"`
-    Season string `json:"season"`
+    Season int `json:"season"`
     Timestamp time.Time `json:"timestamp"`
 }
 

@@ -22,6 +22,14 @@ namespace BotanicalGarden
         Range light;
     };
 
+    enum class Season
+    {
+        Spring,
+        Summer,
+        Autumn,
+        Winter
+    };
+
     enum class GrowthStage
     {
         Bud, // Germoglio

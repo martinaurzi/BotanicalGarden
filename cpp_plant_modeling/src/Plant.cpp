@@ -21,7 +21,7 @@ namespace BotanicalGarden
      * Se la salute della pianta si mantiene sopra una determinata soglia, la pianta cresce. Quando la salute si trova in uno stato intermedio, la pianta interrompe la crescita.
      * Se lo stato di salute si trova sotto la soglia critica, la pianta muore.
     */
-    void Plant::update_plant_status(float temp, float hum, float light)
+    void Plant::update_plant_status(const float temp, const float hum, const float light, const Season season)
     {
         // Pianta morta
         if (is_dead())
@@ -31,7 +31,7 @@ namespace BotanicalGarden
         }
 
         // La salute della pianta viene aggiornata sia se la pianta cresce sia se la crescita è interrotta
-        update_health(temp, hum, light);
+        update_health(temp, hum, light, season);
 
         // Pianta cresce
         if (status.health >= growth_threshold)
@@ -45,7 +45,7 @@ namespace BotanicalGarden
         }
     }
 
-    // Vverifica se le condizioni ambientali sono ideali per la pianta
+    // Verifica se le condizioni ambientali sono ideali per la pianta
     bool Plant::is_environment_ideal(const float temp, const float hum, const float light) const
     {
         return (temp >= ideal_parameters.temperature.min && temp <= ideal_parameters.temperature.max &&
@@ -96,16 +96,6 @@ namespace BotanicalGarden
     PlantStatus Plant::get_plant_status() const
     {
         return status;
-    }
-
-    float Plant::get_growth_threshold() const
-    {
-        return growth_threshold;
-    }
-
-    float Plant::get_death_threshold() const
-    {
-        return death_threshold;
     }
 
     std::string Plant::printPlant() const
