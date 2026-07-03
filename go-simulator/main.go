@@ -5,6 +5,7 @@ import (
     "fmt"
     "time"
     "log"
+    "unsafe"
 
     "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/environment"
     "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/models"
@@ -15,11 +16,12 @@ import (
 #cgo CFLAGS: -I../cpp_plant_modeling/include
 #cgo LDFLAGS: -L../cpp_plant_modeling/cmake-build-debug -lBotanicalGardenLib -lstdc++
 
+#include <stdlib.h>
 #include <stdbool.h>
 
 bool init_garden();
 const char* get_garden();
-const char* apply_environment_changes(const float temp, const float hum, const float light);
+const char* apply_environment_changes(const float temp, const float hum, const float light, const int season);
 */
 import "C"
 
@@ -57,6 +59,8 @@ func main() {
         // Recupero piante iniziali
         cGardenStr := C.get_garden()
         goGardenStr := C.GoString(cGardenStr)
+
+        C.free(unsafe.Pointer(cGardenStr)) // Liberiamo la memoria allocata da C++
 
         fmt.Printf("JSON ricevuto:\n%s\n", goGardenStr)
 
@@ -108,9 +112,12 @@ func main() {
                     C.float(envState.Temperature),
                     C.float(envState.Humidity),
                     C.float(envState.Light),
+                    C.int(envState.Season),
                 )
 
                 goUpdatedGardenStr := C.GoString(cUpdatedGardenStr)
+
+                C.free(unsafe.Pointer(cUpdatedGardenStr))
 
                 plants, err = parsePlantsFromJSON(goUpdatedGardenStr)
                 if err != nil {

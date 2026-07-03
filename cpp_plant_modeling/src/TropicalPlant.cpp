@@ -7,11 +7,11 @@
 namespace BotanicalGarden
 {
     TropicalPlant::TropicalPlant(const std::string& n, const IdealEnvironment& ideal, const float direct_light_t, const float thermal_shock_v):
-        Plant(n, ideal, 75.0f, 45.0f, {0.5f, 0.2f, 0.0f},
+        Plant(n, ideal, 60.0f, 40.0f, {0.5f, 0.2f, 0.0f},
         {0.6f, 0.4f, 0.05f}, {0.4f, 0.0f, 0.1f}),
                 direct_light_tolerance(direct_light_t), thermal_shock_vulnerability(thermal_shock_v){}
 
-    void TropicalPlant::update_health(const float temp, const float hum, const float light)
+    void TropicalPlant::update_health(const float temp, const float hum, const float light, const Season season)
     {
         constexpr float damage_scaling{0.1f};
 
@@ -24,7 +24,7 @@ namespace BotanicalGarden
             {
                 const float delta_shock = delta_temp_prev - thermal_shock_threshold;
                 std::cout << "Salute prima shock termico: " << status.health << std::endl;
-                status.health -= std::pow(delta_shock, 2.0f) * thermal_shock_vulnerability;
+                status.health -= delta_shock * thermal_shock_vulnerability;
                 std::cout << "Salute dopo shock termico: " << status.health << std::endl;
             }
         }
@@ -39,13 +39,9 @@ namespace BotanicalGarden
         {
             // La tolleranza si rigenera in tutti gli altri casi tranne quando l'aria è secca e la temperatura è elevata
             if (hum < ideal_parameters.humidity.min && temp > ideal_parameters.temperature.max)
-            {
                 direct_light_tolerance = std::max(0.0f, direct_light_tolerance - 0.1f);
-            }
             else
-            {
                 direct_light_tolerance = std::min(1.0f, direct_light_tolerance + 0.05f);
-            }
         }
 
         // Condizioni ideali: la salute della pianta aumenta. Se le condizioni sono ideali per più turni consecutivi, la salute della pianta cresce ulteriormente
@@ -66,14 +62,14 @@ namespace BotanicalGarden
 
         ideal_env_streak = 0;
 
-        // Temperatura elevata e umidità elevata: la salute della pianta aumenta leggermente
-        if (temp > ideal_parameters.temperature.max && hum > ideal_parameters.humidity.max)
+        // L'estate è la stagione delle pioggie. La pianta recupera leggermente salute
+        if (season == Season::Summer && hum > ideal_parameters.humidity.max)
         {
-            const float extra_temp = temp - ideal_parameters.temperature.max;
+            constexpr float summer_boost{10.0f};
             const float extra_hum = hum - ideal_parameters.humidity.max;
 
             // La tanh, per valori positivi, restituisce valori compresi tra 0 e 1
-            status.health = std::min(100.0f, status.health + std::tanh(extra_temp) + std::tanh(extra_hum));
+            status.health = std::min(100.0f, status.health + std::tanh(extra_hum) * summer_boost);
         }
 
         // Temperatura molto bassa: la pianta soffre il freddo
@@ -95,6 +91,12 @@ namespace BotanicalGarden
             {
                 status.health -= (light - ideal_parameters.light.max) * damage_scaling;
             }
+        }
+        else if (light < ideal_parameters.light.min)
+        {
+            const float delta_light_low = ideal_parameters.light.min - light;
+
+            status.health -= std::log1p(delta_light_low) * damage_scaling;
         }
 
         // Umidità bassa: danno alla salute cresce velocemente

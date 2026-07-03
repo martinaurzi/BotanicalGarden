@@ -16,6 +16,7 @@ namespace BotanicalGarden
     {
         // instance viene creato solo la prima volta che questa funzione viene chiamata. Successivamente verrà restituita sempre quell'istanza
         static GardenManager instance;
+
         return instance;
     }
 
@@ -144,8 +145,6 @@ namespace BotanicalGarden
                 plant_json["growth"] = plant_ptr->get_plant_status().growth;
                 plant_json["growth_stage"] = plant_ptr->get_growth_stage_str();
                 plant_json["is_dead"] = plant_ptr->is_dead();
-                //plant_json["growth_threshold"] = plant_ptr->get_growth_threshold();
-                //plant_json["death_threashold"] = plant_ptr->get_death_threshold();
 
                 builded_json_garden.push_back(plant_json);
             }
@@ -156,9 +155,29 @@ namespace BotanicalGarden
         return builded_json_garden.dump();
     }
 
-    std::string GardenManager::apply_environment_changes(float current_temp, float current_hum, float current_light)
+    std::string GardenManager::get_season_name(const Season season)
     {
-        std::cout << std::format("***STATO DELL'AMBIENTE***: T={:.2f}, H={:.2f}%, L={:.2f}%\n\n", current_temp, current_hum, current_light);
+        switch (season)
+        {
+            case Season::Spring:
+                return "Spring";
+
+            case Season::Summer:
+                return "Summer";
+
+            case Season::Autumn:
+                return "Autumn";
+
+            case Season::Winter:
+                return "Winter";
+
+            default:
+                return "Unknown";
+        }
+    }
+    std::string GardenManager::apply_environment_changes(float current_temp, float current_hum, float current_light, const Season season)
+    {
+        std::cout << std::format("***STATO DELL'AMBIENTE***: T={:.2f}, H={:.2f}%, L={:.2f}%, Stagione={}\n\n", current_temp, current_hum, current_light, get_season_name(season));
 
         for (size_t i = 1; const auto& plant_ptr : garden)
         {
@@ -166,7 +185,7 @@ namespace BotanicalGarden
             {
                 std::cout << std::format("{}) PIANTA {}", i, plant_ptr->get_plant_name()) << std::endl;
 
-                plant_ptr->update_plant_status(current_temp, current_hum, current_light);
+                plant_ptr->update_plant_status(current_temp, current_hum, current_light, season);
                 std::cout << plant_ptr->printPlant() << std::endl;
             }
             i++;

@@ -30,9 +30,9 @@ namespace BotanicalGarden
         bool load_garden();
 
         std::string get_garden() const;
+        static std::string get_season_name(Season season);
 
-        // devo passare tutto quello che mi passa go. in caso vedere se fare tornare std::string oppure poi farlo dopo quando devo mandare a go
-        std::string apply_environment_changes(float current_temp, float current_hum, float current_light);
+        std::string apply_environment_changes(float current_temp, float current_hum, float current_light, Season season);
     };
 }
 #endif //BOTANICALGARDEN_GARDENMANAGER_H
