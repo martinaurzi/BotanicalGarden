@@ -26,7 +26,7 @@ namespace BotanicalGarden
             std::string printPlant() const override;
 
         private:
-            void use_water_reserve(float& water_reserve_damage);
+            void use_water_reserve(float& water_reserve_damage) noexcept;
     };
 }
 

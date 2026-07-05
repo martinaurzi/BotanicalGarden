@@ -12,7 +12,7 @@ namespace BotanicalGarden
             water_reserve{0.0f}
     {}
 
-    void DesertPlant::use_water_reserve(float& water_reserve_damage)
+    void DesertPlant::use_water_reserve(float& water_reserve_damage) noexcept
     {
         constexpr float needed_water{1.0f};
         const float water_ratio = water_reserve / needed_water;

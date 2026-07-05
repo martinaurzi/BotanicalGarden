@@ -23,9 +23,9 @@ namespace BotanicalGarden
             virtual void update_health(float temp, float hum, float light, Season season) = 0;
 
             // Funzione statica condivisa tra tutte le istanze
-            static float calculate_environment_factor(float current_value, float min_value, float max_value, const GrowthFactors& factors);
+            static float calculate_environment_factor(float current_value, float min_value, float max_value, const GrowthFactors& factors) noexcept;
 
-            bool is_environment_ideal(float temp, float hum, float light) const;
+            bool is_environment_ideal(float temp, float hum, float light) const noexcept;
 
         public:
             // Costruttore
@@ -39,12 +39,12 @@ namespace BotanicalGarden
 
             virtual std::string get_plant_type() const = 0;
 
-            bool is_dead() const;
+            bool is_dead() const noexcept;
 
-            GrowthStage get_growth_stage() const;
+            GrowthStage get_growth_stage() const noexcept;
             std::string get_growth_stage_str() const;
             std::string get_plant_name() const;
-            PlantStatus get_plant_status() const;
+            const PlantStatus& get_plant_status() const noexcept;
 
             virtual std::string printPlant() const;
     };

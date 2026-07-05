@@ -9,7 +9,14 @@ namespace BotanicalGarden
     TropicalPlant::TropicalPlant(const std::string& n, const IdealEnvironment& ideal, const float direct_light_t, const float thermal_shock_v):
         Plant(n, ideal, 60.0f, 40.0f, {0.5f, 0.2f, 0.0f},
         {0.6f, 0.4f, 0.05f}, {0.4f, 0.0f, 0.1f}),
-                direct_light_tolerance(direct_light_t), thermal_shock_vulnerability(thermal_shock_v){}
+                direct_light_tolerance(direct_light_t), thermal_shock_vulnerability(thermal_shock_v)
+    {
+        if (direct_light_t && (direct_light_t < 0.0f || direct_light_t > 1.0f))
+            throw std::invalid_argument("Il valore di direct_light_tolerance deve essere compreso tra 0.0 e 1.0");
+
+        if (thermal_shock_v && (thermal_shock_v < 0.0f || thermal_shock_v > 1.0f))
+            throw std::invalid_argument("Il valore di thermal_shock_vulnerability deve essere compreso tra 0.0 e 1.0");
+    }
 
     void TropicalPlant::update_health(const float temp, const float hum, const float light, const Season season)
     {

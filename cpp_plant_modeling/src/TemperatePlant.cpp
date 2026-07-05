@@ -1,5 +1,6 @@
 #include <format>
 #include <iostream>
+#include <stdexcept>
 
 #include "TemperatePlant.h"
 
@@ -7,7 +8,17 @@ namespace BotanicalGarden
 {
     TemperatePlant::TemperatePlant(const std::string& n, const IdealEnvironment& ideal, const float cold_dorm, const float low_light_t, const float leaf_renewal):
         Plant(n, ideal, 50.0f, 25.0f, {0.6f, 0.0f, 0.4f}, {0.5f, 0.1f, 0.1f},
-            {0.5f, 0.3f, 0.2f}), cold_dormancy(cold_dorm), low_light_tolerance(low_light_t), leaf_renewal(leaf_renewal){}
+            {0.5f, 0.3f, 0.2f}), cold_dormancy(cold_dorm), low_light_tolerance(low_light_t), leaf_renewal(leaf_renewal)
+    {
+        if (cold_dorm < 0.0f || cold_dorm > 1.0f)
+            throw std::invalid_argument("Il valore di cold_dormancy deve essere compreso tra 0.0 e 1.0");
+
+        if (low_light_t < 0.0f || low_light_t > 1.0f)
+            throw std::invalid_argument("Il valore di low_light_tolerance deve essere compreso tra 0.0 e 1.0");
+
+        if (leaf_renewal && (leaf_renewal < 0.0f || leaf_renewal > 1.0f))
+            throw std::invalid_argument("Il valore di leaf_renewal deve essere compreso tra 0.0 e 1.0");
+    }
 
     void TemperatePlant::apply_damage_with_shield(const float base_damage)
     {
@@ -29,7 +40,7 @@ namespace BotanicalGarden
         }
     }
 
-    void TemperatePlant::apply_seasonal_effects(const Season season)
+    void TemperatePlant::apply_seasonal_effects(const Season season) noexcept
     {
         switch (season)
         {

@@ -30,7 +30,7 @@ namespace BotanicalGarden
 
         private:
             void apply_damage_with_shield(float base_damage);
-            void apply_seasonal_effects(Season season);
+            void apply_seasonal_effects(Season season) noexcept;
 
             void set_leaf_renewal(const float leaf_r) {leaf_renewal = leaf_r;}; // inline
 
