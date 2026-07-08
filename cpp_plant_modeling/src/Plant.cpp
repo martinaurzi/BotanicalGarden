@@ -1,9 +1,9 @@
-#include "Plant.h"
-#include "utils.h"
-
 #include <iostream>
 #include <format>
 #include <stdexcept>
+
+#include "Plant.h"
+#include "utils.h"
 
 namespace BotanicalGarden
 {
@@ -85,23 +85,7 @@ namespace BotanicalGarden
 
     std::string Plant::get_growth_stage_str() const
     {
-        switch (get_growth_stage())
-        {
-            case GrowthStage::Bud:
-                return "Bud";
-
-            case GrowthStage::Seedling:
-                return "Seedling";
-
-            case GrowthStage::Adult:
-                return "Adult";
-
-            case GrowthStage::Dead:
-                return "Dead";
-
-            default:
-                return "Unknown";
-        }
+        return growth_stage_to_string(get_growth_stage());
     }
 
     std::string Plant::get_plant_name() const

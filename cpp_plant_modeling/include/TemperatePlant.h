@@ -17,6 +17,14 @@ namespace BotanicalGarden
         float shield_charge{0.0f};
         bool isDormant{false};
 
+        void apply_damage_with_shield(float base_damage);
+        void apply_seasonal_effects(Season season) noexcept;
+
+        void set_leaf_renewal(const float leaf_r) {leaf_renewal = leaf_r;}; // inline
+
+        // Funzione friend che può accedere ai membri private della classe
+        friend void GardenManager::load_garden_from_file(const std::string& filename);
+
         public:
             TemperatePlant(const std::string& n, const IdealEnvironment& ideal, float cold_dorm, float low_light_t, float leaf_renewal = 0.0f);
 
@@ -27,15 +35,6 @@ namespace BotanicalGarden
             std::string get_plant_type() const override;
 
             std::string printPlant() const override;
-
-        private:
-            void apply_damage_with_shield(float base_damage);
-            void apply_seasonal_effects(Season season) noexcept;
-
-            void set_leaf_renewal(const float leaf_r) {leaf_renewal = leaf_r;}; // inline
-
-            // Funzione friend che può accedere ai membri private della classe
-            friend void GardenManager::load_garden_from_file(const std::string& filename);
     };
 }
 

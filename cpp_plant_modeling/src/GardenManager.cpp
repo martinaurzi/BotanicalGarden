@@ -10,6 +10,7 @@
 #include "TropicalPlant.h"
 #include "TemperatePlant.h"
 #include "GardenManager.h"
+#include "utils.h"
 
 namespace BotanicalGarden
 {
@@ -120,6 +121,8 @@ namespace BotanicalGarden
                 throw std::invalid_argument(std::format("Errore nella riga {} del file: {}", line, e.what()));
             }
         }
+
+        file.close();
     }
 
     bool GardenManager::load_garden()
@@ -184,23 +187,7 @@ namespace BotanicalGarden
 
     std::string GardenManager::get_season_name(const Season season)
     {
-        switch (season)
-        {
-            case Season::Spring:
-                return "Spring";
-
-            case Season::Summer:
-                return "Summer";
-
-            case Season::Autumn:
-                return "Autumn";
-
-            case Season::Winter:
-                return "Winter";
-
-            default:
-                return "Unknown";
-        }
+        return season_to_string(season);
     }
 
     // Applica i cambiamenti dell'ambiente a tutte le piante presenti nel giardino
