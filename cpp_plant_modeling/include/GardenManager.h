@@ -11,7 +11,7 @@ namespace BotanicalGarden
     class GardenManager
     {
         std::vector<std::unique_ptr<Plant>> garden{};
-        std::string garden_json_serialized;
+        std::string garden_json_serialized = "[]";
 
         // Costruttore privato in modo che non si possano creare nuove istanze della classe dell'esterno (Singleton)
         // = default per generare implementazione di default del costruttore
@@ -29,7 +29,7 @@ namespace BotanicalGarden
         void load_garden_from_file(const std::string& filename);
         bool load_garden();
 
-        std::string get_garden() const;
+        std::string get_garden() const noexcept;
         static std::string get_season_name(Season season);
 
         std::string apply_environment_changes(float current_temp, float current_hum, float current_light, Season season);

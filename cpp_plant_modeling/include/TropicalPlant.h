@@ -19,6 +19,12 @@ namespace BotanicalGarden
         static constexpr float thermal_shock_threshold = 10.0f;
         static constexpr float max_direct_light_tolerance = 1.0f;
 
+        // inline
+        void set_direct_light_tolerance(const float new_value) {direct_light_tolerance = new_value;}
+        void set_thermal_shock_vulnerability(const float new_value) {thermal_shock_vulnerability = new_value;}
+
+        friend void GardenManager::load_garden_from_file(const std::string& filename);
+
         public:
             TropicalPlant(const std::string& n, const IdealEnvironment& ideal, float direct_light_t = 0.6f, float thermal_shock_v = 0.3f);
 
@@ -29,13 +35,6 @@ namespace BotanicalGarden
             std::string get_plant_type() const override;
 
             std::string printPlant() const override;
-
-        private:
-            // inline
-            void set_direct_light_tolerance(const float new_value) {direct_light_tolerance = new_value;}
-            void set_thermal_shock_vulnerability(const float new_value) {thermal_shock_vulnerability = new_value;}
-
-            friend void GardenManager::load_garden_from_file(const std::string& filename);
     };
 }
 #endif //BOTANICALGARDEN_TROPICALPLANT_H

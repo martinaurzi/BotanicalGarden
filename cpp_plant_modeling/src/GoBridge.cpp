@@ -1,12 +1,31 @@
 #include <format>
 #include <cstring>
+#include <iostream>
 
 #include "GardenManager.h"
 
 extern "C" {
     bool init_garden()
     {
-        return BotanicalGarden::GardenManager::get_instance().load_garden();
+        try
+        {
+            return BotanicalGarden::GardenManager::get_instance().load_garden();
+        }
+        catch (const std::invalid_argument& e)
+        {
+            std::cerr << "[GO BRIDGE]: Invalid Argument: " << e.what() << std::endl;
+            return false;
+        }
+        catch (const std::runtime_error& e)
+        {
+            std::cerr << "[GO BRIDGE]: Errore runtime: " << e.what() << std::endl;
+            return false;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[GO BRIDGE]: Eccezione generica: " << e.what() << std::endl;
+            return false;
+        }
     }
 
     const char* get_garden()

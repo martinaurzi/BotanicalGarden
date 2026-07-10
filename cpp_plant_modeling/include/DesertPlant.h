@@ -10,6 +10,8 @@ namespace BotanicalGarden
         float water_reserve;
         static constexpr float max_water_reserve = 10.0f; // static: condiviso tra tutte le DesertPlant, constexpr: valutato a compile-time
 
+        void use_water_reserve(float& water_reserve_damage) noexcept;
+
         public:
             DesertPlant(const std::string& n, const IdealEnvironment& ideal);
 
@@ -24,9 +26,6 @@ namespace BotanicalGarden
             std::string get_plant_type() const override;
 
             std::string printPlant() const override;
-
-        private:
-            void use_water_reserve(float& water_reserve_damage);
     };
 }
 

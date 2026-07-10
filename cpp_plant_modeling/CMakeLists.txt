@@ -10,6 +10,7 @@ set(CPP_SOURCES
         src/TemperatePlant.cpp
         src/GardenManager.cpp
         src/GoBridge.cpp
+        src/utils.cpp
 )
 
 add_library(BotanicalGardenLib STATIC ${CPP_SOURCES}) # Creiamo una libreria statica a partire dai file sorgenti
