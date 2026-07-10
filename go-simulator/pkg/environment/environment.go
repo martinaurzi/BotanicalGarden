@@ -9,15 +9,15 @@ import (
     "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/models"
 )
 
-type Season int // enum non esistono in go
+type Season int
 
 const (
-	Spring Season = iota //Spring Season = iota si puo fare anche solo così sulla prima riga
+	Spring Season = iota
 	Summer
 	Autumn
 	Winter
 
-	seasonCount //inizializzato a 4 da iota
+	seasonCount
 )
 
 func (s Season) String() string {
@@ -39,58 +39,75 @@ func (s Season) String() string {
 type SimulationConfig struct {
     DayLight             float64
     NightLight           float64
-    BaseHumidity         float64
     ClimateVariationFreq time.Duration
     DayDuration          time.Duration
     SeasonDuration       time.Duration
 }
 
-// Profilo climatico stagionale (valori di riferimento per ogni stagione)
+// Valori climatici di riferimento per ogni stagione
 type ClimateProfile struct {
     DayTemp          float64
     NightTemp        float64
+    BaseHumidity     float64
     HumidityMaxDelta float64
 }
 
+//  Modificatori applicati in base al meteo giornaliero (Sole, Nuvole, Pioggia)
+type WeatherModifiers struct {
+    DeltaTemp float64
+    DeltaHum  float64
+    DeltaLt   float64
+}
+
+// Struttura per gestire lo stato dell'ambiente e i cicli ambientali
 type Environment struct {
-	mutex sync.Mutex
-	state models.EnvironmentState
-	simCfg SimulationConfig   // Sola lettura: non serve mutex per leggerla
-    currentProfile ClimateProfile     // Mutabile va protetta con mutex
-	currentSeason Season
-	stopChan chan struct{} //canale per fermare i ticker
-	stopOnce sync.Once //facciamo in modo che la funzione Stop possa essere chiamata una sola volta se no genera panic
-	wg sync.WaitGroup
+	mutex          sync.Mutex
+	state          models.EnvironmentState
+	simCfg         SimulationConfig
+    currentProfile ClimateProfile
+	currentSeason  Season
+    weather        WeatherModifiers
+	stopChan       chan struct{}
+	stopOnce       sync.Once
+	wg             sync.WaitGroup
 }
 
-// Definiamo i profili climatici per ogni stagione
-var seasonProfiles = map[Season]ClimateProfile{ // definizione di una mappa(dictionary) che associa ad ogni stagione il profilo climatico (key: value)
-    Spring: {DayTemp: 22.0, NightTemp: 12.0, HumidityMaxDelta: 15.0}, // go permette di omettere ClimateProfile{} perché lo inferisce automaticamente
-    Summer: {DayTemp: 32.0, NightTemp: 20.0, HumidityMaxDelta: 25.0},
-    Autumn: {DayTemp: 18.0, NightTemp: 8.0,  HumidityMaxDelta: 10.0},
-    Winter: {DayTemp: 10.0, NightTemp: 0.0,  HumidityMaxDelta: 5.0},
+// Profili climatici stagionali predefiniti
+var seasonProfiles = map[Season]ClimateProfile{
+        // Primavera: Clima mite, umidità media
+        Spring: {DayTemp: 24.0, NightTemp: 16.0, BaseHumidity: 45.0, HumidityMaxDelta: 15.0},
+
+        // Estate: Caldo intenso, l'aria è secca di giorno e l'umidità sale poco di notte
+        Summer: {DayTemp: 30.0, NightTemp: 22.0, BaseHumidity: 30.0, HumidityMaxDelta: 5.0},
+
+        // Autunno: Fresco e molto umido
+        Autumn: {DayTemp: 19.0, NightTemp: 14.0, BaseHumidity: 65.0, HumidityMaxDelta: 15.0},
+
+        // Inverno: Freddo e costantemente umido/bagnato
+        Winter: {DayTemp: 12.0, NightTemp: 5.0,  BaseHumidity: 70.0, HumidityMaxDelta: 8.0},
 }
 
+// Ritorna una copia dello stato ambientale corrente
 func (e *Environment) GetState() models.EnvironmentState {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	return e.state //ritorna una copia perchè la struct è value type
+	return e.state
 }
 
+// Inizializza l'ambiente con la configurazione data e lo stato iniziale (Autunno)
 func NewEnvironment(cfg SimulationConfig) *Environment {
-    // Creiamo l'istanza di Environment e iniziamo dalla primavera
     env := &Environment{
-        simCfg:        cfg,
-        currentSeason: Spring,
-        currentProfile: seasonProfiles[Spring],
-        stopChan:      make(chan struct{}), //inizializzazione del canale di Stop
+        simCfg:         cfg,
+        currentSeason:  Autumn,
+        currentProfile: seasonProfiles[Autumn],
+        weather:        WeatherModifiers{DeltaTemp: 2.5, DeltaHum: -5, DeltaLt: 10},
+        stopChan:       make(chan struct{}),
     }
 
-    // Inizializziamo lo stato iniziale
     env.state = models.EnvironmentState{
-        Temperature: env.currentProfile.NightTemp,
-        Humidity:    cfg.BaseHumidity,
-        Light:       cfg.NightLight,
+        Temperature: env.currentProfile.DayTemp,
+        Humidity:    env.currentProfile.BaseHumidity - env.currentProfile.HumidityMaxDelta,
+        Light:       cfg.DayLight,
         Season:      int(env.currentSeason),
         Timestamp:   time.Now(),
     }
@@ -98,121 +115,119 @@ func NewEnvironment(cfg SimulationConfig) *Environment {
     return env
 }
 
+// Chiudere il canale stopChan una sola volta per arrestare i cicli di simulazione attivi
 func (e *Environment) Stop() {
-    e.stopOnce.Do(func() { //funzione anonima perchè non posso passare direttamente close()
+    e.stopOnce.Do(func() {
             close(e.stopChan)
     })
 }
 
+// Attende la terminazione di tutte le goroutine dell'ambiente
 func (e *Environment) Wait() {
     e.wg.Wait()
 }
 
-// Avvio della simulazione dell'ambiente
+// Avvia le goroutine concorrenti per i cicli ambientali
 func (e *Environment) Start(envChan chan<- models.EnvironmentState) {
 	e.wg.Add(3)
 
 	go e.dayNightCycle(envChan)
-	go e.climateVariations(envChan)
+	go e.climateVariations()
 	go e.seasonCycle()
 }
 
-// Aggiorna i valori di luce e temperatura in base al tempo trascorso
+// Calcola e aggiorna i parametri ambientali(luce,temperatura e umidità) in base al tempo trascorso dall'inizio della simulazione
 func (e *Environment) updateTimeAndBaseClimate(startTime time.Time, envChan chan<- models.EnvironmentState) {
-	// Calcoliamo a che punto del ciclo ci troviamo (da 0.0 inizio a 1.0 fine)
+	// Viene determinato a che punto del ciclo giorno/notte ci troviamo (da 0.0 inizio a 1.0 fine)
 	elapsed := time.Since(startTime)
 	normalizedTime := math.Mod(elapsed.Seconds(), e.simCfg.DayDuration.Seconds()) / e.simCfg.DayDuration.Seconds()
 
-	// Usiamo il coseno per creare un'oscillazione del tra 0.0 e 1.0
-	// Sfasiamo di pi greco per far partire la simulazione con coefficiente = 0.0
-	coef := 0.5 * (1.0 + math.Cos(2.0*math.Pi*normalizedTime - math.Pi))
+	// Oscillazione sinusoidale tra 0.0 (notte fonda) e 1.0 (pieno giorno)
+	coef := 0.5 * (1.0 + math.Cos(2.0*math.Pi*normalizedTime))
 
     e.mutex.Lock()
-	// Quando coef è 0 (notte) -> umidità è BaseHumidity + MaxDelta (es. 60 + 20 = 80%)
-    // Quando coef è 1 (giorno) -> umidità è BaseHumidity - MaxDelta (es. 60 - 20 = 40%)
-    e.state.Humidity = e.simCfg.BaseHumidity + e.currentProfile.HumidityMaxDelta*(1.0-2.0*coef) //comportamento opposto alla temperatura
 
-	e.state.Temperature = e.currentProfile.NightTemp + (e.currentProfile.DayTemp-e.currentProfile.NightTemp)*coef
-	e.state.Light = e.simCfg.NightLight + (e.simCfg.DayLight-e.simCfg.NightLight)*coef
+    e.state.Humidity = e.currentProfile.BaseHumidity + e.currentProfile.HumidityMaxDelta*(1.0-2.0*coef) + e.weather.DeltaHum
+	e.state.Temperature = e.currentProfile.NightTemp + (e.currentProfile.DayTemp-e.currentProfile.NightTemp)*coef + e.weather.DeltaTemp
+	e.state.Light = e.simCfg.NightLight + (e.simCfg.DayLight-e.simCfg.NightLight)*coef + e.weather.DeltaLt
+
+    if e.state.Light < e.simCfg.NightLight { e.state.Light = e.simCfg.NightLight }
 
 	e.state.Season = int(e.currentSeason)
-
 	e.state.Timestamp = time.Now()
 
 	stateCopy := e.state
-
     e.mutex.Unlock()
 
 	envChan <- stateCopy
 }
 
+// Goroutine: aggiorna periodicamente lo stato dell'ambiente simulando l'alternanza giorno/notte.
 func (e *Environment) dayNightCycle(envChan chan<- models.EnvironmentState) {
-    // Creiamo un Ticker che genera un tick ogni 500 millisecondi
     ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	defer e.wg.Done()
 
-    // Registriamo il momento esatto in cui la simulazione è partita
+    // Registriamo l'istante in cui la simulazione è partita
 	startTime := time.Now()
 
-    // Loop infinito: ogni 500ms il ticker si attiva ed esegue il calcolo
     for{
-         select{ // select esegue una sola scelta e poi termina (serve solo per i canali, gestire eventi concorrenti)
+         select{
             case <-e.stopChan:
                 log.Println("[INFO] dayNightCycle interrotto.")
-                return //esce dalla funzione attivando defer
+                return
             case <-ticker.C:
                 e.updateTimeAndBaseClimate(startTime, envChan)
          }
     }
 }
 
-// updateClimate applica variazioni alla temperatura e umidità
-func (e *Environment) updateClimate(deltaTemp, deltaHum float64, envChan chan<- models.EnvironmentState) {
-	e.mutex.Lock()
-
-	// Modifichiamo lo stato
-	e.state.Temperature += deltaTemp
-	e.state.Humidity += deltaHum
-
-	// per ora non si presentano questi casi limite
-	if e.state.Humidity < 0 {
-		e.state.Humidity = 0
-	} else if e.state.Humidity > 100 {
-		e.state.Humidity = 100
-	}
-
-    e.state.Season = int(e.currentSeason)
-	e.state.Timestamp = time.Now()
-
-	stateCopy := e.state
-
-	e.mutex.Unlock()
-	// Inviamo lo stato modificato sul canale
-	envChan <- stateCopy  //operazione bloccante in caso di saturazione del buffer
-}
-
-// Variazioni periodiche di temperatura e umidità per non avere tutti i giorni lo stesso comportamento
-func (e *Environment) climateVariations(envChan chan<- models.EnvironmentState) {
-	ticker := time.NewTicker(e.simCfg.ClimateVariationFreq)
-	defer ticker.Stop() // Pulizia della risorsa quando la funzione esce
+// Goroutine: introduce variazioni meteo casuali a intervalli regolari(ogni giorno simulato)
+func (e *Environment) climateVariations() {
+    ticker := time.NewTicker(e.simCfg.ClimateVariationFreq)
+    defer ticker.Stop()
     defer e.wg.Done()
 
-    for{
-        select{
-            case <- e.stopChan:
-                log.Println("[INFO] climateVariations interrotto.")
-                return
+    for {
+        select {
+        case <-e.stopChan:
+            log.Println("[INFO] climateVariations interrotto.")
+            return
 
-            case <-ticker.C:
-                // Generazione variazione casuale di temperatura e umidità [-2, +2) e [-5, +5)
-                deltaTemp := rand.Float64()*4 - 2
-                deltaHum := rand.Float64()*10 - 5
-                e.updateClimate(deltaTemp, deltaHum, envChan)
+        case <-ticker.C:
+            weather := rand.Intn(10)
+            var dT, dH, dL float64
+            var climateVariation string
+
+            if weather < 5 { // 50% probabilità: SOLE
+                climateVariation = "Sole"
+                dT = 2.5
+                dH = -5.0
+                dL = 10.0
+            } else if weather < 8 { // 30% probabilità: NUVOLE
+                climateVariation = "Nuvole"
+                dT = -1.5
+                dH = 5.0
+                dL = -5.0
+            } else { // 20% probabilità: PIOGGIA
+                climateVariation = "Pioggia"
+                dT = -3.5
+                dH = 10.0
+                dL = -15.0
+            }
+
+            log.Printf("[METEO] Cambiamento meteo: %s", climateVariation)
+
+            e.mutex.Lock()
+            e.weather.DeltaTemp = dT
+            e.weather.DeltaHum = dH
+            e.weather.DeltaLt = dL
+            e.mutex.Unlock()
         }
     }
 }
 
+// Goroutine: gestisce l'avanzamento ciclico delle stagioni e aggiorna il profilo climatico
 func (e *Environment) seasonCycle() {
 	ticker := time.NewTicker(e.simCfg.SeasonDuration)
 	defer ticker.Stop()
@@ -229,7 +244,7 @@ func (e *Environment) seasonCycle() {
                 // Passiamo alla stagione successiva
                 e.currentSeason = (e.currentSeason + 1) % seasonCount
 
-               // Applica il nuovo profilo climatico predefinito
+               // Applicazione del nuovo profilo climatico
                e.currentProfile = seasonProfiles[e.currentSeason]
 
                 log.Printf("[STAGIONE] Nuova stagione avviata: %s!",
