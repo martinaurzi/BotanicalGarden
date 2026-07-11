@@ -2,15 +2,15 @@ package storage
 
 import (
     "time"
-    "database/sql" //interfaccia generica per i database
+    "database/sql"
     "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/models"
-    _ "github.com/mattn/go-sqlite3" //driver specifico per sqlite
-    //_ per il blank import in quanto noi non facciamo chiamate specifiche a go-sqlite3 ma alle funzione di sql, senza blank import il compilatore si blocca perchè tutto cio che viene importato deve essere usato
+    "github.com/martinaurzi/BotanicalGarden/go-simulator/pkg/environment"
+    _ "github.com/mattn/go-sqlite3"
 )
 
-// preparazione del database al percorso path
+// Inizializza il database SQLite e crea la tabella degli snapshot se non esiste
 func InitDB(path string) (*sql.DB, error) {
-    db, err := sql.Open("sqlite3", path) //mi restituisce in db il gestore della connessione con il database
+    db, err := sql.Open("sqlite3", path)
     if err != nil {
         return nil, err
     }
@@ -31,11 +31,12 @@ func InitDB(path string) (*sql.DB, error) {
             humidity REAL,
             light REAL
         );
-    `) //abbiamo ignota con _ sql.Result che ha due metodi che ci restituisce il numero di righe modficate e l'ultimo id generato con autoincrement
+    `)
 
     return db, err
 }
 
+// Salva lo stato corrente di tutte le piante e dell'ambiente mediante una transazione atomica
 func SaveSnapshot(db *sql.DB, plants []models.PlantState, env models.EnvironmentState) error {
     tx, err := db.Begin()
     if err != nil {
@@ -43,7 +44,6 @@ func SaveSnapshot(db *sql.DB, plants []models.PlantState, env models.Environment
     }
     defer tx.Rollback()
 
-    // Prepariamo la query una volta sola nel database
     stmt, err := tx.Prepare(`
         INSERT INTO plant_snapshots
         (plant_id, species, type, health, growth, stage, is_dead, timestamp, season, temperature, humidity, light)
@@ -51,15 +51,16 @@ func SaveSnapshot(db *sql.DB, plants []models.PlantState, env models.Environment
     if err != nil {
         return err
     }
-    defer stmt.Close() // Chiude lo statement alla fine della funzione
+    defer stmt.Close()
 
-    // Formattiamo il timestamp una volta sola fuori dal ciclo
+    // Formattazione del timestamp nel formato (dataTora+fuso)
     formattedTime := env.Timestamp.Format(time.RFC3339)
+    // Conversione dell'intero rappresentante la stagione nella stringa corrispondente
+    seasonString := environment.Season(env.Season).String()
 
     for _, p := range plants {
-       // Usiamo stmt.Exec che è molto più veloce di tx.Exec dentro un ciclo
        _, err := stmt.Exec(
-          p.ID, p.Name, p.Type, p.Health, p.Growth, p.GrowthStage, p.IsDead, formattedTime, env.Season,
+          p.ID, p.Name, p.Type, p.Health, p.Growth, p.GrowthStage, p.IsDead, formattedTime, seasonString,
           env.Temperature, env.Humidity, env.Light,
        )
        if err != nil {
@@ -70,13 +71,14 @@ func SaveSnapshot(db *sql.DB, plants []models.PlantState, env models.Environment
     return tx.Commit()
 }
 
+// Svuota la tabella plant_snapshots
 func ClearSnapshots(db *sql.DB) error {
     _, err := db.Exec(`DELETE FROM plant_snapshots`)
     if err != nil {
         return err
     }
 
-    // azzera l'autoincrement dell'id
+    // Per azzerare il contenggio dell'autoincrement dell'id
     _, err = db.Exec(`DELETE FROM sqlite_sequence WHERE name='plant_snapshots'`)
     return err
 }

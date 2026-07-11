@@ -25,9 +25,9 @@ const char* apply_environment_changes(const float temp, const float hum, const f
 */
 import "C"
 
-const simulationDuration = 36 * time.Second
+const simulationDuration = 48 * time.Second
 
-// helper per convertire la stringa JSON del C++
+// Converte la stringa JSON da C++ in una slice di PlantState
 func parsePlantsFromJSON(jsonStr string) ([]models.PlantState, error) {
 	var plants []models.PlantState
 	err := json.Unmarshal([]byte(jsonStr), &plants)
@@ -35,72 +35,67 @@ func parsePlantsFromJSON(jsonStr string) ([]models.PlantState, error) {
 }
 
 func main() {
-
-    // inizializzazione database
+        // Inizializzazione e pulizia del Database
     	db, err := storage.InitDB("plants.db")
     	if err != nil {
-    		log.Fatalf("Errore fatale inizializzazione DB: %v", err)
+    		log.Fatalf("[ERRORE] Errore di inizializzazione DB: %v", err) //log per avere data e ora di quando avviene la stampa, %v per stampare il valore di error nel formato predefinito
     	}
-
         defer db.Close()
 
         err = storage.ClearSnapshots(db)
         if err != nil {
-            log.Fatalf("Errore durante la pulizia del database: %v", err)
+            log.Fatalf("[ERRORE] Errore durante la pulizia del database: %v", err) //Fatalf effettua la stampa e poi effettua una chiamata a os.Exit(1)
         }
-        fmt.Println("Database inizializzato e tabella snapshot svuotata.")
+        fmt.Println("Database inizializzato e tabella plant_snapshots svuotata.")
 
-        // Inizializzazione giardino in C++, chiamiamo il bridge per caricare le piante da file
+        // Inizializzazione giardino in C++
         if !bool(C.init_garden()) {
-            log.Fatalf("Errore: Impossibile caricare il giardino dal file in C++")
+            log.Fatalf("[ERRORE] Impossibile caricare il giardino dal file in C++")
         }
         fmt.Println("Giardino inizializzato con successo in C++.")
 
-        // Recupero piante iniziali
+        // Recupero dello stato iniziale delle piante dal C++ via Cgo
         cGardenStr := C.get_garden()
         goGardenStr := C.GoString(cGardenStr)
 
-        C.free(unsafe.Pointer(cGardenStr)) // Liberiamo la memoria allocata da C++
-
-        fmt.Printf("JSON ricevuto:\n%s\n", goGardenStr)
+        C.free(unsafe.Pointer(cGardenStr)) // Libera la memoria allocata sul lato C++
 
         plants, err := parsePlantsFromJSON(goGardenStr)
         if err != nil {
-            log.Fatalf("Errore nel parsing del JSON delle piante iniziali: %v", err)
+            log.Fatalf("[ERRORE] Errore nel parsing del JSON delle piante iniziali: %v", err)
         }
-        fmt.Printf("Ricevute %d piante iniziali dal motore di simulazione C++.\n", len(plants))
+        fmt.Printf("Ricevute %d piante iniziali da C++.\n", len(plants))
 
     	// Configurazione simulazione
     	cfg := environment.SimulationConfig{
-    		DayLight:             100.0,
-    		NightLight:           10.0,
-    		BaseHumidity:         50.0,
-    		ClimateVariationFreq: 2 * time.Second,
+    		DayLight:             80.0,
+    		NightLight:           30.0,
+    		ClimateVariationFreq: 6 * time.Second,
     		DayDuration:          6 * time.Second,
-    		SeasonDuration:       18 * time.Second,
+    		SeasonDuration:       12 * time.Second,
     	}
 
     	// Creazione ambiente
     	env := environment.NewEnvironment(cfg)
 
-    	// Canale per inviare lo stato dell’ambiente alle piante, con buffer di 100 messaggi
-    	envChan := make(chan models.EnvironmentState, 100)
+    	// Canale per notificare al main le modifiche dello stato dell’ambiente
+    	envChan := make(chan models.EnvironmentState, 10)
 
+        // Recupero stato iniziale dell'ambiente
     	initialEnv := env.GetState()
+    	// Salvataggio stato inziale del sistema (piante e stato ambiente)
     	err = storage.SaveSnapshot(db, plants, initialEnv)
     	if err != nil {
-    		log.Printf("Errore salvataggio snapshot iniziale: %v", err) //vedere se conviene fmt o log
+    		log.Printf("[ERRORE] Errore salvataggio snapshot iniziale: %v", err)
     	} else {
     		fmt.Println("Primo snapshot iniziale salvato nel DB con successo.")
     	}
 
     	// Avvio delle goroutine dell’ambiente
     	env.Start(envChan)
-
-    	fmt.Println("Simulazione avviata. Terminerà automaticamente tra 36 secondi")
+        fmt.Println("Simulazione avviata. Terminerà automaticamente tra 36 secondi")
 
     	done := time.After(simulationDuration)
-
 
         for {
             select {
@@ -108,35 +103,37 @@ func main() {
                 fmt.Printf("[%s] Cambiamento Ambiente -> Temp: %.2f°C, Luce: %.2f, Hum: %.2f\n",
                     envState.Timestamp.Format("15:04:05"), envState.Temperature, envState.Light, envState.Humidity)
 
+                // Invio dei nuovi parametri ambientali a C++ per aggiornare lo stato di crescita delle piante
                 cUpdatedGardenStr := C.apply_environment_changes(
                     C.float(envState.Temperature),
                     C.float(envState.Humidity),
                     C.float(envState.Light),
                     C.int(envState.Season),
                 )
-
                 goUpdatedGardenStr := C.GoString(cUpdatedGardenStr)
 
                 C.free(unsafe.Pointer(cUpdatedGardenStr))
 
+                // Otteniamo lo slice contenente lo stato delle piante aggiornato
                 plants, err = parsePlantsFromJSON(goUpdatedGardenStr)
                 if err != nil {
-                    log.Printf("Errore nel parsing del JSON aggiornato: %v", err)
+                    log.Printf("[ERRORE] Errore nel parsing del JSON aggiornato: %v", err)
                     continue
                 }
 
+                // Salvataggio nel database dei nuovi snapshots
                 err = storage.SaveSnapshot(db, plants, envState)
                 if err != nil {
-                    log.Printf("Errore salvataggio snapshot a DB: %v", err)
+                    log.Printf("[ERRORE] Errore salvataggio snapshot a DB: %v", err)
                 }
 
             case <-done:
-                // Scaduti i 36 secondi, usciamo dal ciclo infinito
-                fmt.Println("\nTempo limite di 36 secondi raggiunto. Arresto della simulazione in corso")
+                // Scaduto il tempo di simulazione termina l'esecuzione delle goroutine
+                log.Println("\nTempo limite di 36 secondi raggiunto. Arresto della simulazione in corso")
                 env.Stop()
                 env.Wait()
                 fmt.Println("Tutte le goroutine terminate.")
-                return // serve la label perchè break da solo esce solo da select, mentre break Loop esce dal for esterno
+                return
             }
         }
 }

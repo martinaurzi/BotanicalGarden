@@ -4,11 +4,11 @@ import "time"
 
 // Stato ambiente in un dato istante
 type EnvironmentState struct {
-    Temperature float64 `json:"temperature"` //tag delle struct per dire al programma come trasformare i dati in json
-    Humidity float64 `json:"humidity"`
-    Light float64 `json:"light"`
-    Season int `json:"season"`
-    Timestamp time.Time `json:"timestamp"`
+    Temperature float64   `json:"temperature"` //tag delle struct per dire al programma come trasformare i dati in json
+    Humidity    float64   `json:"humidity"`
+    Light       float64   `json:"light"`
+    Season      int       `json:"season"`
+    Timestamp   time.Time `json:"timestamp"`
 }
 
 // Stato della pianta
