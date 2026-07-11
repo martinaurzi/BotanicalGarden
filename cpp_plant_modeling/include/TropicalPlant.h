@@ -1,7 +1,6 @@
 #ifndef BOTANICALGARDEN_TROPICALPLANT_H
 #define BOTANICALGARDEN_TROPICALPLANT_H
 
-#include <vector>
 #include <memory>
 #include <limits>
 

@@ -20,7 +20,7 @@ namespace BotanicalGarden
         void apply_damage_with_shield(float base_damage);
         void apply_seasonal_effects(Season season) noexcept;
 
-        void set_leaf_renewal(const float leaf_r) {leaf_renewal = leaf_r;}; // inline
+        void set_leaf_renewal(const float leaf_r) {leaf_renewal = leaf_r;};
 
         // Funzione friend che può accedere ai membri private della classe
         friend void GardenManager::load_garden_from_file(const std::string& filename);

@@ -2,6 +2,7 @@
 #define BOTANICALGARDEN_PLANT_H
 
 #include <string>
+
 #include "Types.h"
 
 namespace BotanicalGarden

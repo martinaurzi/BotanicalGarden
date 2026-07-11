@@ -36,7 +36,7 @@ namespace BotanicalGarden
             // Lo scudo si consuma
             shield_charge = std::max(0.0f, shield_charge - 0.2f);
 
-            std::cout << std::format("Protezione dello scudo dopo il danno: {:.2f}%", shield_charge * 100.0f) << std::endl;
+            std::cout << std::format("Protezione dello scudo dopo il danno: {:.2f}%\n", shield_charge * 100.0f);
         }
     }
 
@@ -81,7 +81,7 @@ namespace BotanicalGarden
         if (is_environment_ideal(temp, hum, light))
         {
             status.health = std::min(100.0f, status.health + 5.0f);
-            std::cout << "CONDIZIONI IDEALI" << std::endl;
+            std::cout << "CONDIZIONI IDEALI\n";
             return;
         }
 
@@ -94,7 +94,7 @@ namespace BotanicalGarden
                 isDormant = true;
                 shield_charge = cold_dormancy;
 
-                std::cout << std::format("La pianta {} e' entrata in riposo vegetativo (resistenza ai danni: {:.2f}%)", name, shield_charge * 100.0f) << std::endl;
+                std::cout << std::format("La pianta {} e' entrata in riposo vegetativo (resistenza ai danni: {:.2f}%)\n", name, shield_charge * 100.0f);
             }
         }
 
@@ -103,14 +103,12 @@ namespace BotanicalGarden
             // Temperatura elevata: danno grave
             const float base_damage_temp_max = (temp - ideal_parameters.temperature.max) * damage_intensity;
 
-            std::cout << "Danno temp > max" << std::endl;
             apply_damage_with_shield(base_damage_temp_max);
         }
         else if (temp < ideal_parameters.temperature.min)
         {
             const float base_damage_temp_min = (1.0f - cold_dormancy) * (ideal_parameters.temperature.min - temp);
 
-            std::cout << "Danno temp < min" << std::endl;
             apply_damage_with_shield(base_damage_temp_min);
         }
 
@@ -118,7 +116,6 @@ namespace BotanicalGarden
         {
             const float base_damage_hum_max = (hum - ideal_parameters.humidity.max) * damage_intensity;
 
-            std::cout << "Danno hum > max" << std::endl;
             apply_damage_with_shield(base_damage_hum_max);
         }
         else if (hum < ideal_parameters.humidity.min)
@@ -126,7 +123,6 @@ namespace BotanicalGarden
             // Umidità bassa: terreno troppo secco
             const float base_damage_hum_min = (ideal_parameters.humidity.min - hum);
 
-            std::cout << "Danno hum < min" << std::endl;
             apply_damage_with_shield(base_damage_hum_min);
         }
 
@@ -135,7 +131,6 @@ namespace BotanicalGarden
             // Luce elevata:
             const float base_damage_light_max = (light - ideal_parameters.light.max) * damage_intensity;
 
-            std::cout << "Danno light > max" << std::endl;
             apply_damage_with_shield(base_damage_light_max);
         }
         else if (light < ideal_parameters.light.min)
@@ -143,7 +138,6 @@ namespace BotanicalGarden
             // Luce bassa
             const float base_damage_light_min = (ideal_parameters.light.min - light) * (1.0f - low_light_tolerance);
 
-             std::cout << "Danno light < min" << std::endl;
             apply_damage_with_shield(base_damage_light_min);
         }
 
@@ -151,7 +145,7 @@ namespace BotanicalGarden
         {
             // Lo scudo è stato esaurito
             isDormant = false;
-            std::cout << std::format("La pianta {} si e' risvegliata dopo il riposo vegetativo (scudo: {:.2f}%)", name, shield_charge * 100.0f) << std::endl;
+            std::cout << std::format("La pianta {} si e' risvegliata dopo il riposo vegetativo (scudo: {:.2f}%)\n", name, shield_charge * 100.0f);
         }
 
         // Controllo per evitare che la saluta scenda sotto lo 0
@@ -162,7 +156,7 @@ namespace BotanicalGarden
     {
         if (isDormant)
         {
-            std::cout << std::format("La pianta {} e' in riposo vegetativo: crescita temporaneamente bloccata.", name) << std::endl;
+            std::cout << std::format("La pianta {} e' in riposo vegetativo: crescita temporaneamente bloccata\n", name);
             return;
         }
 

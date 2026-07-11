@@ -195,7 +195,7 @@ namespace BotanicalGarden
     {
         if (garden.empty())
         {
-            std::cerr << "[GARDEN MANAGER]: Non e' possibile applicare i cambiamenti dell'ambiente se il giardino e' vuoto." << std::endl;
+            std::cerr << "[GARDEN MANAGER]: Non e' possibile applicare i cambiamenti dell'ambiente se il giardino e' vuoto.\n";
             garden_json_serialized = "[]";
 
             return garden_json_serialized;
@@ -207,10 +207,10 @@ namespace BotanicalGarden
         {
             if (plant_ptr != nullptr)
             {
-                std::cout << std::format("{}) PIANTA {}", i, plant_ptr->get_plant_name()) << std::endl;
+                std::cout << std::format("{}) PIANTA {}\n", i, plant_ptr->get_plant_name());
 
                 plant_ptr->update_plant_status(current_temp, current_hum, current_light, season);
-                std::cout << plant_ptr->printPlant() << std::endl;
+                std::cout << plant_ptr->printPlant() << '\n';
             }
             i++;
         }

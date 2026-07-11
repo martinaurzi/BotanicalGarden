@@ -13,17 +13,17 @@ extern "C" {
         }
         catch (const std::invalid_argument& e)
         {
-            std::cerr << "[GO BRIDGE]: Invalid Argument: " << e.what() << std::endl;
+            std::cerr << "[GO BRIDGE]: Invalid Argument: " << e.what() << '\n';
             return false;
         }
         catch (const std::runtime_error& e)
         {
-            std::cerr << "[GO BRIDGE]: Errore runtime: " << e.what() << std::endl;
+            std::cerr << "[GO BRIDGE]: Errore runtime: " << e.what() << '\n';
             return false;
         }
         catch (const std::exception& e)
         {
-            std::cerr << "[GO BRIDGE]: Eccezione generica: " << e.what() << std::endl;
+            std::cerr << "[GO BRIDGE]: Eccezione generica: " << e.what() << '\n';
             return false;
         }
     }

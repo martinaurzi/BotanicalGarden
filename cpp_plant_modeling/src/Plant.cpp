@@ -42,7 +42,7 @@ namespace BotanicalGarden
         // Pianta morta
         if (is_dead())
         {
-            std::cout << std::format("La pianta {} e' morta (salute: {:.2f}% <= {:.2f}%)", name, status.health, death_threshold) << std::endl;
+            std::cout << std::format("La pianta {} e' morta (salute: {:.2f}% <= {:.2f}%)\n", name, status.health, death_threshold);
             return;
         }
 
@@ -52,12 +52,12 @@ namespace BotanicalGarden
         // Pianta cresce
         if (status.health >= growth_threshold)
         {
-            std::cout << std::format("La pianta {} cresce ({:.2f}% >= {:.2f}%)", name, status.health, growth_threshold) << std::endl;
+            std::cout << std::format("La pianta {} cresce ({:.2f}% >= {:.2f}%)\n", name, status.health, growth_threshold);
             apply_growth(temp, hum, light);
         }
         else
         {
-            std::cout << std::format("La pianta {} ha interrotto la crescita ({:.2f}% < {:.2f}%)", name, status.health, growth_threshold) << std::endl;
+            std::cout << std::format("La pianta {} ha interrotto la crescita ({:.2f}% < {:.2f}%)\n", name, status.health, growth_threshold);
         }
     }
 

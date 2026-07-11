@@ -30,9 +30,9 @@ namespace BotanicalGarden
             if (delta_temp_prev >= thermal_shock_threshold)
             {
                 const float delta_shock = delta_temp_prev - thermal_shock_threshold;
-                std::cout << "Salute prima shock termico: " << status.health << std::endl;
+                std::cout << "Salute prima shock termico: " << status.health << '\n';
                 status.health -= delta_shock * thermal_shock_vulnerability;
-                std::cout << "Salute dopo shock termico: " << status.health << std::endl;
+                std::cout << "Salute dopo shock termico: " << status.health << '\n';
             }
         }
 
@@ -54,7 +54,7 @@ namespace BotanicalGarden
         // Condizioni ideali: la salute della pianta aumenta. Se le condizioni sono ideali per più turni consecutivi, la salute della pianta cresce ulteriormente
         if (is_environment_ideal(temp, hum, light))
         {
-            std::cout << "CONDIZIONI IDEALI" << std::endl;
+            std::cout << "CONDIZIONI IDEALI\n";
 
             ideal_env_streak++;
 

@@ -42,7 +42,7 @@ namespace BotanicalGarden
         // Condizioni ideali: la pianta recupera salute
         if (is_environment_ideal(temp, hum, light))
         {
-            std::cout << "CONDIZIONI IDEALI" << std::endl;
+            std::cout << "CONDIZIONI IDEALI\n";
 
             if (season == Season::Spring)
             {
