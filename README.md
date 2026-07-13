@@ -39,7 +39,7 @@ go run main.go
 
 ### 4. Visualizzazione grafici Python
 
-Riprendere il terminale relativo al passo uno e accertarsi di essere nella cartella `python-analysis` ed eseguire il seguente comando nel terminale:
+Riprendere il terminale relativo al passo 1 e accertarsi di essere nella cartella `python-analysis` ed eseguire il seguente comando nel terminale:
 
 ```bash
 python analyzer.py  
